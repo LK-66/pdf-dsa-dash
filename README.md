@@ -1,0 +1,17 @@
+# PDF DSA Dash
+
+App web per allievi con DSA: apri un PDF o una foto, evidenzia e annota, leggi il testo con l'OCR, ascoltalo e correggilo.
+
+**Apri l'app:** https://lk-66.github.io/pdf-dsa-dash/
+
+## Funzioni
+- Viewer PDF con zoom, evidenziatore (4 colori), sottolineatura, penna, evidenziatore a mano libera e note
+- OCR gratuito nel browser (Tesseract): per pagina, per area o con la fotocamera; pulizia automatica dell'immagine e parole incerte segnate in arancione
+- Editor DSA (Lexend / OpenDyslexic, spaziature, temi) con lettura ad alta voce dal cursore ed evidenziazione della parola
+- Modalità Lettura a tutto schermo (ideale con il Controller lettura dell'iPad)
+- Correzione dell'OCR con Copilot o Claude (copia/incolla)
+- Esportazione: PDF annotato, PNG, Word, PDF del testo, file delle annotazioni
+
+## Uso su iPad / iPhone
+Apri il link in **Safari** → Condividi → **Aggiungi alla schermata Home**.
+I testi e le foto restano sul dispositivo: nulla viene caricato su server.
