@@ -224,6 +224,17 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .sc-lines{position:absolute;inset:0;touch-action:none}
 .sc-lines .ln{position:absolute;border:2px solid #ffd60a;background:rgba(255,214,10,.22);border-radius:5px;cursor:pointer;transition:background .1s}
 .sc-lines .ln.off{border:2px dashed rgba(255,255,255,.55);background:rgba(0,0,0,.25)}
+.sc-start{width:min(520px,92%);display:flex;flex-direction:column;gap:12px}
+.sc-card{display:grid;grid-template-columns:44px 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;text-align:left;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:16px;padding:16px;cursor:pointer;font:inherit}
+.sc-card svg.i{grid-row:1/3;width:30px;height:30px;justify-self:center}
+.sc-card b{font-family:var(--f-display);font-size:19px}.sc-card small{opacity:.8;font-size:14px}
+.sc-card input{display:none}
+.sc-card.main{background:var(--green);border-color:var(--green)}
+.sc-card.apple{background:rgba(255,214,10,.16);border-color:rgba(255,214,10,.5)}
+.sc-tip{font-size:14px;opacity:.75;margin:4px 0 0;text-align:center}
+.sc-apple{width:min(680px,94%);height:100%;display:flex;flex-direction:column;gap:10px;padding:8px 0}
+.sc-apple ol{margin:0;padding-left:1.3em;font-size:15px;line-height:1.5}
+.sc-apple textarea{flex:1;min-height:160px;border-radius:12px;border:2px solid #ffd60a;padding:12px;font-size:17px;line-height:1.5;background:#fff;color:#111}
 .sc-err{max-width:420px;text-align:center;padding:20px;display:flex;flex-direction:column;gap:14px;align-items:center}
 .sc-big{font-size:17px;padding:14px 18px}
 .sc-proc{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-weight:700}
@@ -444,6 +455,21 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <img id="camImg" alt="Foto scattata">
       <div class="sc-crop" id="scCrop" hidden><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div>
       <div class="sc-lines" id="scLines" hidden></div>
+    </div>
+    <div class="sc-start" id="scStart" hidden>
+      <label class="sc-card main"><i data-i="camera"></i><b>Scatta una foto</b><small>Fotocamera del dispositivo, massima qualità</small><input type="file" class="photoIn" accept="image/*" capture="environment"></label>
+      <label class="sc-card"><i data-i="image"></i><b>Scegli dalle foto</b><small>Una foto già scattata o salvata</small><input type="file" class="photoIn" accept="image/*"></label>
+      <button class="sc-card apple" id="scApple" hidden><i data-i="scan"></i><b>Testo da fotocamera (Apple)</b><small>Riconoscimento di Apple: molto preciso, raddrizza la pagina da solo</small></button>
+      <p class="sc-tip">Per un testo preciso: pagina intera con un po' di margine, dispositivo parallelo al foglio, luce uniforme e senza riflessi.</p>
+    </div>
+    <div class="sc-apple" id="scAppleBox" hidden>
+      <ol>
+        <li><b>Tocca il riquadro</b> qui sotto.</li>
+        <li>Tocca di nuovo e scegli <b>«Scansiona testo»</b> (icona con le righe in un riquadro), oppure premi quell'icona sopra la tastiera.</li>
+        <li>Inquadra il testo: si evidenzia in giallo. Premi <b>«Inserisci»</b>. Puoi ripetere per altre parti.</li>
+      </ol>
+      <textarea id="appleTxt" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Tocca qui, poi «Scansiona testo»"></textarea>
+      <div class="row"><button class="btn" id="appleBack">‹ Indietro</button><button class="btn" id="appleClear">Svuota</button><span class="spacer"></span><button class="btn primary" id="appleOk"><i data-i="check"></i> Inserisci nell'editor</button></div>
     </div>
     <div class="sc-err" id="camErr" hidden><p id="camErrTxt"></p>
       <label class="btn primary sc-big"><i data-i="camera"></i> Scatta o scegli una foto<input type="file" class="photoIn" accept="image/*" capture="environment"></label></div>
@@ -668,12 +694,12 @@ async function openFiles(files,append){
   const pdfs=files.filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name)), imgs=files.filter(f=>f.type.startsWith('image/'));
   try{
     if(pdfs.length){await loadPdf(pdfs[0])}
-    for(const f of imgs){await addImagePage(await loadPhoto(f),f.name)}
+    for(const f of imgs){await addImagePage(await loadPhoto(f,2400),f.name)}
   }catch(err){console.error(err);setStatus('Errore nel caricamento: '+err.message)}
 }
 // Carica una foto già ridotta (lato lungo max 2400 px): evita i limiti di memoria di Safari su iPhone
 // e rende l'OCR più veloce senza perdere qualità di lettura.
-function loadPhoto(f,max=2400){
+function loadPhoto(f,max=4000){
   // prima via blob:, poi (se il visualizzatore lo blocca) via FileReader
   const decode=src=>new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=rej;img.src=src});
   const shrink=img=>{let w=img.naturalWidth,h=img.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
@@ -972,10 +998,10 @@ function toCanvas(src){
 }
 // Pulizia: ingrandisce i testi piccoli, scala di grigi, contrasto, poi bianco/nero "adattivo"
 // (soglia locale, regge ombre e fotocopie grigie). Il raddrizzamento lo fa Tesseract (rotateAuto).
-function preprocess(src){
+function preprocess(src,mode='adaptive'){
   let w=src.width,h=src.height,k=1;
   if(w<1800)k=Math.min(3,1800/w);
-  if(w*k*h*k>7e6)k=Math.sqrt(7e6/(w*h));
+  if(w*k*h*k>10e6)k=Math.sqrt(10e6/(w*h));
   w=Math.round(w*k);h=Math.round(h*k);
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(src,0,0,w,h);
@@ -983,6 +1009,10 @@ function preprocess(src){
   for(let i=0,j=0;i<N;i++,j+=4){const v=(d[j]*299+d[j+1]*587+d[j+2]*114)/1000|0;g[i]=v;hist[v]++}
   let lo=0,hi=255,acc=0;for(;lo<255&&(acc+=hist[lo])<N*.01;lo++);acc=0;for(;hi>0&&(acc+=hist[hi])<N*.01;hi--);
   if(hi-lo>20){const f=255/(hi-lo);for(let i=0;i<N;i++)g[i]=(g[i]-lo)*f}
+  if(mode==='gray'){ // scala di grigi pulita: Tesseract binarizza da solo (di solito il migliore sulle foto)
+    for(let i=0,j=0;i<N;i++,j+=4){d[j]=d[j+1]=d[j+2]=g[i];d[j+3]=255}
+    ctx.putImageData(im,0,0);return c;
+  }
   {const b=new Uint8ClampedArray(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=h)continue;for(let dx=-1;dx<=1;dx++){const xx=x+dx;if(xx<0||xx>=w)continue;s+=g[yy*w+xx];c++}}b[y*w+x]=s/c}g.set(b)} // antirumore
   const W=w+1,I=new Uint32Array(W*(h+1));
   for(let y=1;y<=h;y++){let row=0;for(let x=1;x<=w;x++){row+=g[(y-1)*w+x-1];I[y*W+x]=I[(y-1)*W+x]+row}}
@@ -991,6 +1021,8 @@ function preprocess(src){
     const sum=I[y2*W+x2]-I[y1*W+x2]-I[y2*W+x1]+I[y1*W+x1],cnt=(x2-x1)*(y2-y1),v=(g[y*w+x]*cnt<=sum*(1-t))?0:255,j=(y*w+x)*4;d[j]=d[j+1]=d[j+2]=v;d[j+3]=255}}
   ctx.putImageData(im,0,0);return c;
 }
+// Qualità di una lettura: sicurezza media di Tesseract sulle parole delle righe buone (pesata sulla lunghezza)
+function ocrQuality(lines){let n=0,sum=0;lines.filter(l=>l.ok).forEach(l=>l.words.forEach(w=>{const k=w.t.length;n+=k;sum+=w.c*k}));const q=n?sum/n:0;return{q:n<25?q*.6:q,mass:sum/100}} // sicurezza media e “quantità di testo affidabile”
 // Righe riconosciute (con riquadro e paragrafo). ok=false: riga nata da foto/disegni (sicurezza bassa o “sillabe” sparse)
 function extractLines(data){
   const out=[];let pi=0;
@@ -1006,7 +1038,10 @@ function extractLines(data){
 }
 // Ricompone il testo da un insieme di righe: paragrafi, parole a capo riunite, simboli spuri tolti.
 function composeOcr(lines){
-  const groups=[];lines.forEach(l=>{const g=groups[groups.length-1];if(g&&g.para===l.para)g.lines.push(l);else groups.push({para:l.para,lines:[l]})});
+  const H=l=>Math.max(1,l.bbox.y1-l.bbox.y0);
+  const groups=[];lines.forEach(l=>{const g=groups[groups.length-1],last=g&&g.lines[g.lines.length-1];let split=!g||g.para!==l.para;
+    if(!split){const r=H(l)/H(last),gap=l.bbox.y0-last.bbox.y1;split=r>1.45||r<0.69||((r>1.2||r<0.83)&&gap>0.5*Math.min(H(l),H(last)))} // titoli: carattere più grande e spazio prima/dopo
+    if(split)groups.push({para:l.para,lines:[l]});else g.lines.push(l)});
   const out=[];let dubbi=0;
   groups.forEach(g=>{
     const tk=[];g.lines.forEach(l=>{l.words.forEach(w=>tk.push(w));tk.push({br:1})});
@@ -1037,11 +1072,24 @@ function buildOcr(data){
 }
 function cleanText(t){return t.replace(/(\p{L})-\n(\p{Ll})/gu,'$1$2').replace(/[|¦]/g,'').replace(/[ \t]+([,.;:!?])/g,'$1').replace(/[ \t]{2,}/g,' ').trim()}
 async function ocrImage(src,onProg,opt={}){
-  const w=await getWorker();const orig=await toCanvas(src);let c=capCanvas(orig,3200);
-  if(opt.clean!==false&&$('#cleanImg').checked)c=preprocess(c);
+  const w=await getWorker();const orig=await toCanvas(src);let c=capCanvas(orig,4000);
   ocrProg=onProg;
   try{
-    const{data}=await w.recognize(c,{rotateAuto:true});
+    const run=async img=>{const{data}=await w.recognize(img,{rotateAuto:true});const lines=extractLines(data);const m=ocrQuality(lines);return{data,lines,q:m.q,mass:m.mass,img}};
+    let best;
+    if(opt.clean!==false&&$('#cleanImg').checked){
+      const force=window.__ocrPre;
+      if(force)best=await run(preprocess(c,force));
+      else{
+        best=await run(preprocess(c,'gray'));                       // 1° tentativo: scala di grigi
+        if(best.q<93){                                              // poco sicuro? 2° tentativo: bianco/nero adattivo (ombre, fotocopie)
+          if(onProg)ocrProg=p=>onProg(p,2);
+          const alt=await run(preprocess(c,'adaptive'));if(alt.mass>best.mass*1.05)best=alt; // vince chi trova più testo affidabile
+        }
+      }
+    }else best=await run(c);
+    window.__ocrLast={q:Math.round(best.q)};
+    const data=best.data;c=best.img;
     if(opt.lines){const k=orig.width/c.width;return extractLines(data).map(l=>({...l,bbox:{x0:l.bbox.x0*k,y0:l.bbox.y0*k,x1:l.bbox.x1*k,y1:l.bbox.y1*k}}))}
     const r=buildOcr(data);return opt.full?r:r.text;
   }finally{ocrProg=null}
@@ -1083,21 +1131,26 @@ async function runOCROnArea(n,a){
 }
 
 /* ───────── scanner a tutto schermo: scatto → ritaglio → righe da scegliere ───────── */
+const TOUCH=/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const cam={stream:null,facing:'environment',canvas:null,cropCanvas:null,crop:{x:0,y:0,w:1,h:1},lines:[],sel:[],res:null,dest:'editor',stage:'live'};
 const scEl={ov:$('#camOv'),video:$('#camVideo'),guide:$('#scGuide'),photo:$('#scPhoto'),img:$('#camImg'),crop:$('#scCrop'),lines:$('#scLines'),
   err:$('#camErr'),proc:$('#camProc'),procTxt:$('#camProcTxt'),title:$('#scTitle'),live:$('#scBarLive'),cropBar:$('#scBarCrop'),sel:$('#scBarSel')};
 function scStage(st){
   cam.stage=st;
   const live=st==='live';
+  $('#scStart').hidden=st!=='start';$('#scAppleBox').hidden=st!=='apple';
   scEl.video.hidden=!live||!cam.stream;scEl.guide.hidden=!live||!cam.stream;
-  scEl.photo.hidden=live;scEl.crop.hidden=st!=='crop';scEl.lines.hidden=st!=='select';
+  scEl.photo.hidden=live||st==='start'||st==='apple';scEl.crop.hidden=st!=='crop';scEl.lines.hidden=st!=='select';
   scEl.live.hidden=!live;scEl.cropBar.hidden=st!=='crop';scEl.sel.hidden=st!=='select';
   scEl.proc.hidden=st!=='proc';if(!live)scEl.err.hidden=true;
-  scEl.title.textContent={live:'Inquadra il testo',crop:'Scegli la parte da leggere',proc:'Riconoscimento…',select:'Tocca le righe da tenere'}[st]||'';
+  $('#camOv .sc-sel').hidden=st==='apple';
+  scEl.title.textContent={start:'Scansiona testo',apple:'Testo da fotocamera (Apple)',live:'Inquadra il testo',crop:'Scegli la parte da leggere',proc:'Riconoscimento…',select:'Tocca le righe da tenere'}[st]||'';
 }
 function openCam(){
   scEl.ov.hidden=false;document.body.style.overflow='hidden';
-  cam.canvas=cam.cropCanvas=null;cam.res=null;setDest(cam.dest);scStage('live');startCam();
+  cam.canvas=cam.cropCanvas=null;cam.res=null;setDest(cam.dest);
+  if(TOUCH)scStage('start');else{scStage('live');startCam()}
   getWorker().then(()=>setStatus('OCR pronto')).catch(()=>{});
 }
 async function startCam(){
@@ -1164,7 +1217,7 @@ async function readCrop(){
   scEl.procTxt.textContent=worker?'Riconoscimento testo…':'Preparo il riconoscimento (solo la prima volta)…';
   const t0=performance.now();
   try{
-    const all=await ocrImage(cc,p=>scEl.procTxt.textContent=`Riconoscimento testo… ${Math.round(p*100)}%`,{lines:true});
+    const all=await ocrImage(cc,(p,n)=>scEl.procTxt.textContent=`Riconoscimento testo${n===2?' (2° tentativo, foto difficile)':''}… ${Math.round(p*100)}%`,{lines:true});
     cam.lines=all.filter(l=>l.ok);cam.sel=cam.lines.map(()=>true);
     scStage('select');drawLines();updateSel();
     const secs=Math.max(1,Math.round((performance.now()-t0)/1000));
@@ -1205,7 +1258,18 @@ $('#scRead').onclick=readCrop;
 $('#scAll').onclick=()=>{cam.sel=cam.lines.map(()=>true);updateSel()};
 $('#scNone').onclick=()=>{cam.sel=cam.lines.map(()=>false);updateSel()};
 $$('#scDest button').forEach(b=>b.onclick=()=>setDest(b.dataset.dest));
-$$('.scRetry').forEach(b=>b.onclick=()=>{scStage('live');startCam()});
+$$('.scRetry').forEach(b=>b.onclick=()=>{if(TOUCH)scStage('start');else{scStage('live');startCam()}});
+// riconoscimento di Apple (“Testo attivo”): il sistema scrive il testo direttamente nel riquadro
+$('#scApple').hidden=!IS_IOS;
+$('#scApple').onclick=()=>{scStage('apple');setTimeout(()=>$('#appleTxt').focus(),50)};
+$('#appleBack').onclick=()=>scStage('start');
+$('#appleClear').onclick=()=>{$('#appleTxt').value='';$('#appleTxt').focus()};
+$('#appleOk').onclick=()=>{
+  const raw=$('#appleTxt').value.trim();if(!raw){toast('Il riquadro è vuoto: usa «Scansiona testo»');return}
+  const t=tidy(cleanText(raw));
+  edAppend(`<div class="sec">— Testo da fotocamera —</div><div>${toHtml(t)}</div><br>`);
+  $('#appleTxt').value='';setStatus('Testo da fotocamera aggiunto all’editor');closeCam();
+};
 $('#scBack').onclick=()=>{scStage('crop');showImage(cam.canvas).then(drawCrop)};
 $('#camOk').onclick=async()=>{
   const t=$('#camText').value.trim(),r=cam.res||{text:'',html:''};

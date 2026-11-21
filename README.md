@@ -24,3 +24,5 @@ I testi e le foto restano sul dispositivo: nulla viene caricato su server.
 - OCR in italiano, francese, tedesco, inglese o misto
 - Voci del browser per IT · FR · DE · EN con riconoscimento automatico della lingua frase per frase
 - Modalità Lettura con Play / Pausa / Stop, velocità, lingua e tocco sulla parola per partire da lì
+- OCR più preciso: foto a piena risoluzione con la fotocamera del dispositivo, lettura in scala di grigi con secondo tentativo automatico in bianco/nero per fotocopie e ombre, titoli separati dai paragrafi
+- Su iPad e iPhone: pulsante «Testo da fotocamera (Apple)» che usa il riconoscimento di Apple (Scansiona testo)
