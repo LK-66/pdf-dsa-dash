@@ -160,8 +160,14 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .editor .ul-red{text-decoration:underline 3px #EF4444;text-underline-offset:3px}.editor .ul-blue{text-decoration:underline 3px #3B82F6;text-underline-offset:3px}
 .editor .sec{font-family:var(--f-mono);font-size:.72em;font-weight:700;color:var(--green);letter-spacing:.03em;margin-top:.6em}
 .editor .tts-on{background:var(--hi);border-radius:3px}
-::highlight(tts-sent){background-color:#fff3bf}
-::highlight(tts-word){background-color:#FBBF24;color:#111}
+.edwrap{position:relative;flex:1;min-height:180px;display:flex}
+.edwrap>.editor{flex:1}
+.ttsLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5;mix-blend-mode:multiply} /* il colore si “mescola” col testo: le lettere restano visibili */
+#readOv>.ttsLayer{overflow:visible;bottom:auto;height:0}
+.ttsLayer i{position:absolute;border-radius:3px}
+.ttsLayer .s{background:#fff1a8}
+.ttsLayer .w{background:#fbbf24}
+.dark-hl .ttsLayer{mix-blend-mode:normal}.dark-hl .ttsLayer .s{background:rgba(255,241,168,.16)}.dark-hl .ttsLayer .w{background:rgba(251,191,36,.38)}
 .editor .ocr-dubbio{background:#ffe4c7;border-bottom:2px dotted #d9730d;border-radius:2px;cursor:help}
 .editor .ocr-dubbio.cur{background:#ffc078;outline:2px solid #d9730d}
 .checkbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#fff1e3;border:1px solid #f3c99b;border-radius:10px;padding:6px 10px;font-size:14px}
@@ -415,7 +421,8 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
         <select id="ttsVoice" title="Voce" hidden></select>
         <span class="langbadge" id="ttsBadge" hidden title="Lingua che sta leggendo"></span>
       </div>
-      <div class="editor" id="editor" contenteditable="true" spellcheck="false" data-ph="Importa testo dal PDF, copia una selezione o scansiona una pagina…" aria-label="Testo dell'editor"></div>
+      <div class="edwrap" id="edwrap"><div class="ttsLayer" id="edLayer"></div>
+      <div class="editor" id="editor" contenteditable="true" spellcheck="false" data-ph="Importa testo dal PDF, copia una selezione o scansiona una pagina…" aria-label="Testo dell'editor"></div></div>
       <div class="row">
         <button class="btn" id="saveAnn"><i data-i="save"></i> Salva</button>
         <button class="btn" id="expWord"><i data-i="filedown"></i> Word</button>
@@ -553,6 +560,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 </div>
 
 <div id="readOv" hidden>
+  <div class="ttsLayer" id="readLayer"></div>
   <article id="readTxt" lang="it"></article>
   <nav class="readbar" aria-label="Comandi modalità lettura">
     <button class="rb rb-play" id="rPlay"><svg class="i" viewBox="0 0 24 24"></svg><span>Leggi</span></button>
@@ -1446,7 +1454,7 @@ $('#sThemes').innerHTML=Object.entries(THEMES).map(([k,[bg,fg,l]])=>`<button dat
 function applyDsa(){
   const d=S.dsa,[bg,fg]=THEMES[d.theme]||THEMES.cream;
   const st={fontFamily:`'${d.fontFamily}',sans-serif`,fontSize:d.fontSize+'px',lineHeight:d.lineHeight,letterSpacing:d.letterSpacing+'em',wordSpacing:d.wordSpacing+'em',background:bg,color:fg};
-  Object.assign(editor.style,st);Object.assign($('#sPrev').style,st);
+  Object.assign(editor.style,st);$('#edwrap').classList.toggle('dark-hl',d.theme==='dark');Object.assign($('#sPrev').style,st);
   $('#sFont').value=d.fontFamily;$('#sSize').value=d.fontSize;$('#sLine').value=d.lineHeight;$('#sLet').value=d.letterSpacing;$('#sWord').value=d.wordSpacing;
   $('#sSizeV').textContent=d.fontSize+'px';$('#sLineV').textContent=d.lineHeight;$('#sLetV').textContent=d.letterSpacing.toFixed(2);$('#sWordV').textContent=d.wordSpacing.toFixed(2);
   $$('#sThemes button').forEach(b=>b.classList.toggle('on',b.dataset.t===d.theme));
@@ -1513,7 +1521,7 @@ function syncTtsUi(){
 }
 
 /* motore di lettura riutilizzabile (editor e modalità Lettura) */
-const HLAPI=!!(window.CSS&&CSS.highlights&&window.Highlight);
+
 let activeReader=null;
 function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), skipSec}
   let st=null;
@@ -1537,7 +1545,18 @@ function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), s
   function dom(map,i){let lo=0,hi=map.segs.length-1,best=null;while(lo<=hi){const m=(lo+hi)>>1,s=map.segs[m];if(s.start<=i){best=s;lo=m+1}else hi=m-1}
     if(!best)return map.segs[0]?[map.segs[0].node,0]:null;return[best.node,Math.min(i-best.start,best.len)]}
   function rangeOf(map,a,b){const p=dom(map,a),q=dom(map,b);if(!p||!q)return null;const r=document.createRange();try{r.setStart(p[0],p[1]);r.setEnd(q[0],q[1])}catch(e){return null}return r}
-  function mark(name,r){if(!HLAPI)return;if(r)CSS.highlights.set(name,new Highlight(r));else CSS.highlights.delete(name)}
+  // evidenziazione: riquadri disegnati sopra il testo e ridisegnati a ogni parola (niente resti su Safari)
+  const cur={'tts-sent':null,'tts-word':null};
+  function paint(){
+    const L=o.layer;if(!L)return;const host=L.parentElement,hr=host.getBoundingClientRect(),sx=host===o.scroller?host.scrollLeft:0,sy=host===o.scroller?host.scrollTop:0;
+    let h='';
+    for(const [name,cls] of [['tts-sent','s'],['tts-word','w']]){const r=cur[name];if(!r)continue;
+      for(const q of r.getClientRects()){if(q.width<1||q.height<1)continue;h+=`<i class="${cls}" style="left:${q.left-hr.left+sx-1}px;top:${q.top-hr.top+sy}px;width:${q.width+2}px;height:${q.height}px"></i>`}}
+    L.innerHTML=h;
+  }
+  function mark(name,r){cur[name]=r||null;paint()}
+  if(o.scroller)o.scroller.addEventListener('scroll',()=>{if(cur['tts-word']||cur['tts-sent'])paint()},{passive:true});
+  window.addEventListener('resize',()=>{if(cur['tts-word']||cur['tts-sent'])paint()});
   function keepVisible(r){if(!r)return;const sc=o.scroller||o.root,b=r.getBoundingClientRect(),e=sc.getBoundingClientRect();if(!b.height)return;
     const bottom=Math.min(e.bottom,innerHeight)-(o.bottomPad||30);if(b.top<e.top+30||b.bottom>bottom)sc.scrollTop+=b.top-e.top-(bottom-e.top)/3}
   const state=()=>o.onState&&o.onState(st?{playing:true,paused:st.paused,lang:st.lang}:{playing:false});
@@ -1602,7 +1621,7 @@ let edReader=null;
   let caret=null;
   document.addEventListener('selectionchange',()=>{const s=getSelection();if(s.rangeCount&&editor.contains(s.getRangeAt(0).commonAncestorContainer))caret=s.getRangeAt(0).cloneRange()});
   $$('#ttsBar button').forEach(b=>b.addEventListener('mousedown',e=>e.preventDefault()));
-  edReader=makeReader({root:editor,scroller:editor,
+  edReader=makeReader({root:editor,scroller:editor,layer:$('#edLayer'),
     onState:s=>{$('#ttsPause').disabled=!s.playing;$('#ttsStop').disabled=!s.playing;$('#ttsPlay').disabled=s.playing;
       $('#ttsPause').innerHTML=s.paused?ic('play')+' Riprendi':ic('pause')+' Pausa';
       const b=$('#ttsBadge');b.hidden=!s.playing;if(s.playing)b.textContent=s.lang.toUpperCase()},
@@ -1684,7 +1703,7 @@ const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='M
 let readSize=0,readReader=null,readResume=null;
 function readStyle(){
   const d=S.dsa,[bg,fg]=THEMES[d.theme]||THEMES.cream,fs=d.fontSize+4+readSize;
-  Object.assign($('#readOv').style,{background:bg,color:fg});
+  Object.assign($('#readOv').style,{background:bg,color:fg});$('#readOv').classList.toggle('dark-hl',d.theme==='dark');
   Object.assign($('#readTxt').style,{fontFamily:`'${d.fontFamily}',sans-serif`,fontSize:fs+'px',lineHeight:d.lineHeight,letterSpacing:d.letterSpacing+'em',wordSpacing:d.wordSpacing+'em'});
 }
 function readUi(s){
@@ -1695,7 +1714,7 @@ function readUi(s){
   const b=$('#rBadge');b.hidden=!s.playing;if(s.playing){b.textContent=s.lang.toUpperCase();b.title=LANGS[s.lang]}
 }
 if('speechSynthesis' in window){
-  readReader=makeReader({root:$('#readTxt'),scroller:$('#readOv'),bottomPad:110,onState:readUi,
+  readReader=makeReader({root:$('#readTxt'),scroller:$('#readOv'),layer:$('#readLayer'),bottomPad:110,onState:readUi,
     onStop:p=>{if(p){const r=document.createRange();r.setStart(p[0],p[1]);r.collapse(true);readResume=r}else readResume=null}});
 }else{$('#rPlay').hidden=true;$('#rStop').hidden=true;$('#rRate').hidden=true}
 function openReading(){
