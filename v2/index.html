@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PDF DSA Dash v2</title>
+<meta name="apple-mobile-web-app-title" content="PDF DSA v2">
+<meta name="theme-color" content="#1d6b55">
+<link rel="apple-touch-icon" href="../icon.png">
+<link rel="icon" href="../icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500;700&family=Lexend:wght@400;600&display=swap">
+<style>
+/* PDF DSA — versione HTML autonoma (nessun server). Stile delle Dashboard didattiche.
+   Funziona aprendo il file nel browser o caricandolo su Moodle. Serve internet per le librerie (PDF.js, jsPDF, Tesseract). */
+@font-face{font-family:"OpenDyslexic";src:url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Regular.woff") format("woff");font-display:swap}
+:root{
+  --bg:#f3f6f5;--paper:#fff;--ink:#18252b;--muted:#566670;--line:#d9e2e0;
+  --green:#1d6b55;--green-soft:#e2f1ec;--navy:#23395d;--navy-soft:#e7edf6;
+  --red:#b8323a;--red-soft:#fbeaeb;--hi:#ffe680;--hi-soft:#fff7d1;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif;--f-body:"Atkinson Hyperlegible",Verdana,system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+button,input,select,textarea{font-family:var(--f-body);font-size:14px}
+svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+[hidden]{display:none!important}
+
+/* barra superiore */
+.top{background:var(--paper);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;flex:none}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.logo{width:32px;height:32px;border-radius:8px;background:var(--green);color:#fff;display:grid;place-items:center}
+.logo svg.i{width:18px;height:18px}
+.brand h1{font-family:var(--f-display);font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.1}
+.brand h1 span{color:var(--green)}
+.brand small{display:block;color:var(--muted);font-size:12px}
+.badge{font-family:var(--f-mono);font-size:11px;font-weight:700;background:var(--navy);color:#fff;border-radius:4px;padding:3px 7px;white-space:nowrap}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--paper);padding:7px 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--green);color:#fff}
+
+/* pulsanti */
+.btn{border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:7px 11px;border-radius:8px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;min-height:36px}
+.btn:hover:not(:disabled){border-color:var(--green);color:var(--green)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.btn.primary:hover:not(:disabled){background:#155343;color:#fff}
+.btn.danger{color:var(--red);border-color:#efc4c7}
+.btn.danger:hover:not(:disabled){background:var(--red-soft);color:var(--red);border-color:var(--red)}
+.btn.sm{padding:4px 9px;font-size:13px;min-height:30px}
+.btn.icon{padding:7px;justify-content:center;min-width:36px}
+.btn.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn:focus-visible,.sw:focus-visible,.seg button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+label.btn input{display:none}
+
+/* layout principale */
+.main{flex:1;min-height:0;display:flex;gap:0;padding:10px;gap:0}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+#left{flex:0 0 60%}
+#right{flex:1 1 0}
+.main.v-pdf #right,.main.v-pdf #resizer{display:none}
+.main.v-pdf #left{flex:1 1 100%}
+.main.v-edit #left,.main.v-edit #resizer{display:none}
+#resizer{flex:0 0 12px;cursor:col-resize;display:grid;place-items:center;touch-action:none}
+#resizer::after{content:"";width:4px;height:44px;border-radius:2px;background:var(--line)}
+#resizer:hover::after{background:var(--green)}
+
+/* toolbar compatta */
+.tb{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--paper)}
+.grp{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:3px}
+.tbtn{border:0;background:transparent;border-radius:7px;width:34px;height:32px;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.tbtn:hover{background:var(--green-soft);color:var(--green)}
+.tbtn.on{background:var(--green);color:#fff}
+.tbtn.danger{color:var(--red)}
+.zoomv{font-family:var(--f-mono);font-size:12px;font-weight:700;min-width:44px;text-align:center}
+.spacer{flex:1}
+.cdot{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.cdot.on{box-shadow:0 0 0 2px var(--ink)}
+
+/* pannello opzioni */
+.opts{border-bottom:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:inline-flex;align-items:center;gap:5px;margin-right:2px}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.sw{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--paper);display:grid;place-items:center;cursor:pointer;padding:0}
+.sw i{display:block;width:18px;height:18px;border-radius:50%}
+.sw.ul i{height:4px;border-radius:2px;width:18px;margin-top:12px}
+.sw.on{border:2px solid var(--ink)}
+input[type=range]{accent-color:var(--green);width:110px}
+input[type=color]{width:34px;height:30px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--paper)}
+.val{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+
+.modebar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--hi-soft);border-bottom:1px solid #ecd78a;font-size:13px;font-weight:700}
+.modebar .spacer{flex:1}
+
+/* viewer */
+.viewer{flex:1;min-height:0;overflow:auto;background:#e7ecea;padding:16px;position:relative}
+.viewer.drop{outline:3px dashed var(--green);outline-offset:-8px}
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--muted);gap:10px;padding:20px}
+.empty .big{width:72px;height:72px;border-radius:18px;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;color:var(--green)}
+.empty .big svg.i{width:36px;height:36px}
+.empty h2{font-family:var(--f-display);font-size:24px;color:var(--ink);margin:4px 0 0}
+.empty p{margin:0;max-width:42ch}
+.empty .row{justify-content:center;margin-top:8px}
+.pcont{margin:0 auto 22px;width:max-content;max-width:none}
+.page{position:relative;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12),0 4px 16px rgba(0,0,0,.06);border-radius:2px}
+.page canvas.pdfc{display:block}
+.pbadge{position:absolute;top:-1px;left:-1px;transform:translateY(-100%);font-family:var(--f-mono);font-size:11px;font-weight:700;color:var(--muted);padding:0 2px 3px}
+.hlov{position:absolute;inset:0;pointer-events:none;z-index:1;mix-blend-mode:multiply}
+.hlbox{position:absolute;border-radius:2px}
+.hlbox.hl-yellow{background:rgba(251,191,36,.45)}.hlbox.hl-green{background:rgba(52,211,153,.45)}.hlbox.hl-blue{background:rgba(96,165,250,.45)}.hlbox.hl-pink{background:rgba(244,114,182,.45)}
+.hlbox.ul-red{border-bottom:3px solid #EF4444}.hlbox.ul-blue{border-bottom:3px solid #3B82F6}
+.textLayer{position:absolute;text-align:initial;inset:0;overflow:hidden;opacity:1;line-height:1;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;z-index:2}
+.textLayer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%}
+.textLayer span.markedContent{top:0;height:0}
+.textLayer ::selection{background:rgba(29,107,85,.3)}
+.textLayer br::selection{background:transparent}
+.textLayer .endOfContent{display:block;position:absolute;inset:100% 0 0;z-index:-1;cursor:default;user-select:none}
+.textLayer .endOfContent.active{top:0}
+canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
+.mode-pen canvas.drawc,.mode-hl canvas.drawc{pointer-events:auto;touch-action:none;cursor:crosshair}
+.capture{position:absolute;inset:0;z-index:6;display:none;touch-action:none}
+.mode-note .capture{display:block;cursor:copy}
+.mode-area .capture{display:block;cursor:crosshair}
+.notes{position:absolute;inset:0;z-index:7;pointer-events:none}
+.areasel{position:absolute;border:2px dashed var(--green);background:rgba(29,107,85,.12);z-index:8;pointer-events:none}
+.pact{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
+
+/* note */
+.note{position:absolute;pointer-events:auto;border:1px solid;border-radius:8px;padding:4px 8px 6px;max-width:250px;min-width:60px;font-size:14px;line-height:1.35;color:#1f2937;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.note.sel{outline:2px solid var(--ink);outline-offset:1px}
+.note .nh{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:2px}
+.note .drag{cursor:grab;opacity:.6;touch-action:none;display:grid;place-items:center}
+.note .drag svg.i{width:13px;height:13px}
+.note .del{border:0;background:rgba(0,0,0,.15);border-radius:50%;width:20px;height:20px;display:grid;place-items:center;cursor:pointer;padding:0}
+.note .del svg.i{width:12px;height:12px}
+.note .nt{white-space:pre-wrap;overflow-wrap:anywhere}
+.note textarea{width:180px;border:1px solid rgba(0,0,0,.2);border-radius:6px;padding:4px;font-size:14px;resize:vertical;background:rgba(255,255,255,.85)}
+.note .na{display:flex;gap:4px;justify-content:flex-end;margin-top:4px}
+.note .na button{border:0;border-radius:6px;padding:3px 8px;cursor:pointer;display:grid;place-items:center}
+.note .na .ok{background:var(--green);color:#fff}.note .na .no{background:rgba(0,0,0,.12)}
+
+.floatcopy{position:absolute;right:18px;bottom:18px;z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);background:var(--paper)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status.busy{color:var(--navy);border-color:#b9c7de;background:var(--navy-soft)}
+
+/* editor */
+.ph{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.ph h2{font-family:var(--f-display);font-size:18px;font-weight:800;margin:0;display:flex;align-items:center;gap:7px}
+.ph h2 svg.i{color:var(--green)}
+.pbody{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:auto}
+.editor{flex:1;min-height:180px;border:1px solid var(--line);border-radius:10px;padding:20px;overflow:auto;outline:none;white-space:normal}
+.editor:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+.editor:empty::before{content:attr(data-ph);color:#94a3b8;pointer-events:none}
+.editor .hl-yellow{background:#FBBF24}.editor .hl-green{background:#6EE7B7}.editor .hl-blue{background:#93C5FD}.editor .hl-pink{background:#F9A8D4}
+.editor .ul-red{text-decoration:underline 3px #EF4444;text-underline-offset:3px}.editor .ul-blue{text-decoration:underline 3px #3B82F6;text-underline-offset:3px}
+.editor .sec{font-family:var(--f-mono);font-size:.72em;font-weight:700;color:var(--green);letter-spacing:.03em;margin-top:.6em}
+.editor .tts-on{background:var(--hi);border-radius:3px}
+::highlight(tts-sent){background-color:#fff3bf}
+::highlight(tts-word){background-color:#FBBF24;color:#111}
+.editor .ocr-dubbio{background:#ffe4c7;border-bottom:2px dotted #d9730d;border-radius:2px;cursor:help}
+.editor .ocr-dubbio.cur{background:#ffc078;outline:2px solid #d9730d}
+.checkbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#fff1e3;border:1px solid #f3c99b;border-radius:10px;padding:6px 10px;font-size:14px}
+.checkbar b{color:#a1500b}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;user-select:none}
+.chk input{accent-color:var(--green);width:16px;height:16px}
+.steps{margin:0;padding-left:1.2em;font-size:14px}.steps li{margin:.25em 0}
+.prompt{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--muted);white-space:pre-wrap;max-height:120px;overflow:auto}
+.links{display:flex;gap:8px;flex-wrap:wrap}
+.links a{text-decoration:none}
+.tts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--green-soft);border-radius:10px;padding:6px 8px}
+.tts select{padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:var(--paper);max-width:170px}
+.saved{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--bg);overflow:hidden;font-size:13px}
+.chip button{border:0;background:transparent;padding:4px 10px;cursor:pointer;color:var(--ink)}
+.chip button+button{border-left:1px solid var(--line);padding:4px 7px;color:var(--red)}
+.chip button:hover{background:var(--green-soft)}
+.chip small{color:var(--muted);font-family:var(--f-mono);font-size:10px;margin-left:4px}
+
+/* finestre */
+.ov{position:fixed;inset:0;background:rgba(15,25,30,.55);z-index:50;display:grid;place-items:center;padding:14px}
+.modal{background:var(--paper);border-radius:14px;width:min(520px,100%);max-height:calc(100dvh - 28px);overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.mh{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--paper);z-index:2}
+.mh h3{font-family:var(--f-display);font-size:19px;margin:0;display:flex;gap:8px;align-items:center}
+.mb{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+.set label{display:flex;justify-content:space-between;font-weight:700;font-size:14px;margin-bottom:4px}
+.set label b{font-family:var(--f-mono);font-size:12px;color:var(--green)}
+.set input[type=range]{width:100%}
+.set select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px}
+.themes{display:flex;flex-wrap:wrap;gap:6px}
+.themes button{border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:700}
+.themes button.on{outline:2px solid var(--green);outline-offset:2px}
+.preview{border:1px dashed var(--line);border-radius:8px;padding:10px 12px}
+
+.spin{width:34px;height:34px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.cammsg{margin:0 0 6px;font-size:14px;font-weight:700;color:var(--green)}.cammsg.err{color:var(--red)}
+.rtxt{width:100%;min-height:110px;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical;font-size:15px;margin-top:6px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.sel{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-weight:700;font-size:13px;color:var(--ink)}
+/* scanner a tutto schermo */
+.scan{position:fixed;inset:0;z-index:90;background:#0b0f10;color:#fff;display:flex;flex-direction:column;user-select:none;-webkit-user-select:none}
+.sc-top{display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 12px 8px}
+.sc-top b{flex:1;font-family:var(--f-display);font-size:18px;text-align:center}
+.sc-ic{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.sc-ic svg.i{width:20px;height:20px}.sc-ic:disabled{opacity:.35}
+.sc-lbl{width:auto;height:auto;border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:700}
+.sc-lbl input{display:none}
+.sc-sel{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:10px;padding:8px 10px;font-weight:700;max-width:40vw}
+.sc-sel option{color:#000}
+.sc-stage{flex:1;min-height:0;position:relative;display:grid;place-items:center;overflow:hidden}
+.sc-stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.sc-guide{position:absolute;inset:7% 6%;border:2px dashed rgba(255,255,255,.55);border-radius:16px;pointer-events:none}
+.sc-photo{position:relative}
+.sc-photo img{width:100%;height:100%;display:block;border-radius:4px}
+.sc-crop{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);touch-action:none;cursor:move}
+.sc-crop i{position:absolute;width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid var(--green);touch-action:none}
+.sc-crop i[data-h=nw]{left:-15px;top:-15px;cursor:nwse-resize}.sc-crop i[data-h=ne]{right:-15px;top:-15px;cursor:nesw-resize}
+.sc-crop i[data-h=sw]{left:-15px;bottom:-15px;cursor:nesw-resize}.sc-crop i[data-h=se]{right:-15px;bottom:-15px;cursor:nwse-resize}
+.sc-lines{position:absolute;inset:0;touch-action:none}
+.sc-lines .ln{position:absolute;border:2px solid #ffd60a;background:rgba(255,214,10,.22);border-radius:5px;cursor:pointer;transition:background .1s}
+.sc-lines .ln.off{border:2px dashed rgba(255,255,255,.55);background:rgba(0,0,0,.25)}
+.sc-err{max-width:420px;text-align:center;padding:20px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.sc-big{font-size:17px;padding:14px 18px}
+.sc-proc{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-weight:700}
+.sc-bar{display:flex;justify-content:center;align-items:center;gap:18px;flex-wrap:wrap;padding:12px 12px max(16px,env(safe-area-inset-bottom))}
+.sc-bar .btn{min-height:44px}
+.sc-go{font-size:16px}
+.shoot{width:76px;height:76px;border-radius:50%;border:5px solid rgba(255,255,255,.85);background:var(--green);color:#fff;cursor:pointer;display:grid;place-items:center}
+.shoot svg.i{width:30px;height:30px}.shoot:disabled{opacity:.35}
+.sc-sheet{background:var(--paper);color:var(--ink);border-radius:16px 16px 0 0;padding:12px 14px max(12px,env(safe-area-inset-bottom));max-height:46vh;overflow:auto;display:flex;flex-direction:column;gap:8px;user-select:text;-webkit-user-select:text}
+.sc-sheet summary{cursor:pointer}
+.sc-end .btn.primary{font-size:16px;min-height:44px}
+/* modalità Lettura */
+#readOv{position:fixed;inset:0;z-index:80;overflow:auto;-webkit-overflow-scrolling:touch}
+#readTxt{max-width:68ch;margin:0 auto;padding:max(40px,env(safe-area-inset-top)) 28px 160px;cursor:pointer}
+#readTxt .sec,#readTxt br+br{display:none}
+#readTxt>div{margin:0 0 .9em}
+.readbar{position:fixed;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);color:var(--ink);font-family:var(--f-body)}
+.rb{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;min-height:48px;min-width:48px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:16px;cursor:pointer}
+.rb svg.i{width:20px;height:20px}.rb:disabled{opacity:.4}
+.rb-play{background:var(--green);border-color:var(--green);color:#fff;min-width:130px;font-size:17px}
+.rb-play.on{background:var(--navy);border-color:var(--navy)}
+.rseg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rseg button{border:0;background:var(--paper);min-height:48px;padding:0 12px;font-weight:700;font-size:15px;cursor:pointer;color:var(--muted)}
+.rseg button+button{border-left:1px solid var(--line)}
+.rseg button.on{background:var(--green-soft);color:var(--green)}
+.rsel{min-height:48px;border:1px solid var(--line);border-radius:12px;padding:0 10px;font-weight:700;font-size:15px;background:var(--paper);color:var(--ink)}
+.langbadge{font-family:var(--f-mono);font-size:12px;font-weight:700;background:var(--navy);color:#fff;border-radius:6px;padding:4px 8px}
+@media (max-width:700px){.rseg button{padding:0 8px;font-size:13px}.rb-play{min-width:100px}.rb-exit span{display:none}}
+.toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,10px);background:var(--ink);color:#fff;padding:9px 14px;border-radius:8px;font-size:14px;z-index:60;opacity:0;transition:.2s;pointer-events:none;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:760px){
+  .brand small{display:none}
+  .seg button span{display:none}
+  .main{flex-direction:column;padding:6px}
+  #left{flex:0 0 55%}
+  #resizer{display:none}
+  #right{margin-top:6px}
+  .main.v-pdf #left,.main.v-edit #right{flex:1 1 100%}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo"><i data-i="file"></i></div>
+    <div><h1>PDF <span>DSA</span> Dash <small style="display:inline;font-family:var(--f-mono);font-size:11px;background:var(--green);color:#fff;border-radius:4px;padding:2px 5px;vertical-align:middle">v2</small></h1><small>Carica, evidenzia, annota, scansiona e ascolta</small></div>
+  </div>
+  <span class="badge" id="pgBadge">Nessun PDF</span>
+  <div class="seg" role="group" aria-label="Vista">
+    <button data-view="pdf" title="Solo PDF"><i data-i="file"></i><span>PDF</span></button>
+    <button data-view="split" class="on" title="Vista divisa"><i data-i="columns"></i><span>Divisa</span></button>
+    <button data-view="edit" title="Solo editor"><i data-i="edit"></i><span>Editor</span></button>
+  </div>
+</header>
+
+<div class="main" id="main">
+  <!-- ═════ PANNELLO SINISTRO: VIEWER ═════ -->
+  <section class="panel" id="left">
+    <div class="tb" id="toolbar" hidden>
+      <div class="grp">
+        <button class="tbtn" id="zOut" title="Zoom −"><i data-i="zoomOut"></i></button>
+        <span class="zoomv" id="zVal">100%</span>
+        <button class="tbtn" id="zIn" title="Zoom +"><i data-i="zoomIn"></i></button>
+        <button class="tbtn" id="zFit" title="Adatta alla larghezza"><i data-i="fit"></i></button>
+      </div>
+      <div class="grp" id="modeGrp">
+        <button class="tbtn on" data-mode="" title="Selezione testo"><i data-i="pointer"></i></button>
+        <button class="tbtn" data-mode="pen" title="Penna"><i data-i="pen"></i></button>
+        <button class="tbtn" data-mode="hl" title="Evidenziatore a mano libera"><i data-i="highlighter"></i></button>
+        <button class="tbtn" data-mode="note" title="Aggiungi nota"><i data-i="type"></i></button>
+      </div>
+      <div class="grp" id="noteColors" hidden></div>
+      <button class="tbtn danger" id="clearDraw" title="Cancella tutti i disegni" hidden><i data-i="eraser"></i></button>
+      <span class="spacer"></span>
+      <button class="btn sm" id="togglePanel"><i data-i="chevUp"></i><span>Meno opzioni</span></button>
+    </div>
+
+    <div class="opts" id="opts">
+      <div class="row">
+        <label class="btn primary"><i data-i="upload"></i> Apri PDF o foto
+          <input type="file" id="fileIn" accept="application/pdf,image/*" multiple></label>
+        <button class="btn" id="scanBtn"><i data-i="camera"></i> Scansiona</button>
+        <button class="btn danger" id="delPdf" hidden><i data-i="trash"></i> Elimina</button>
+      </div>
+      <div class="row needpdf" hidden>
+        <span class="lbl"><i data-i="highlighter"></i> Evidenzia selezione</span>
+        <span id="vSw"></span>
+        <button class="btn icon sm" id="vClear" title="Rimuovi evidenziature e sottolineature dal PDF"><i data-i="eraser"></i></button>
+      </div>
+      <div class="row" id="penOpts" hidden>
+        <span class="lbl">Colore penna</span><input type="color" id="penColor" value="#EF4444">
+        <span class="lbl">Spessore</span><input type="range" id="penSize" min="1" max="10" value="3"><span class="val" id="penSizeV">3px</span>
+      </div>
+      <div class="row" id="hlOpts" hidden>
+        <span class="lbl">Colore</span><span id="hlSw"></span><span class="sep"></span>
+        <span class="lbl">Spessore</span><input type="range" id="hlSize" min="8" max="40" value="20"><span class="val" id="hlSizeV">20px</span>
+      </div>
+      <div class="row needpdf" hidden>
+        <button class="btn" id="ocrAll"><i data-i="scan"></i> OCR pagine</button>
+        <button class="btn primary" id="ocrArea"><i data-i="crop"></i> OCR area</button>
+        <button class="btn" id="copySel"><i data-i="copy"></i> Copia selezione</button>
+        <label class="chk" title="Ingrandisce, raddrizza e rende il testo nero su bianco prima dell’OCR: aiuta molto con fotocopie e foto"><input type="checkbox" id="cleanImg" checked> Pulizia immagine</label>
+        <select class="sel ocrLangSel" title="Lingua del testo da riconoscere con l’OCR"><option value="ita">OCR: Italiano</option><option value="fra">OCR: Français</option><option value="deu">OCR: Deutsch</option><option value="eng">OCR: English</option><option value="mix">OCR: misto (più lento)</option></select>
+      </div>
+    </div>
+
+    <div class="modebar" id="modebar" hidden>
+      <span id="modeTxt"></span><span class="spacer"></span>
+      <button class="btn sm" id="modeExit"><i data-i="pointer"></i> Selezione</button>
+    </div>
+
+    <div class="viewer" id="viewer">
+      <div class="empty" id="empty">
+        <div class="big"><i data-i="upload"></i></div>
+        <h2>Carica un PDF per iniziare</h2>
+        <p>Trascina qui un PDF o una foto, oppure usa i pulsanti. Le foto diventano pagine da annotare e leggere con l'OCR.</p>
+        <div class="row">
+          <label class="btn primary"><i data-i="upload"></i> Apri PDF o foto
+            <input type="file" class="fileIn2" accept="application/pdf,image/*" multiple></label>
+          <button class="btn" id="scanBtn2"><i data-i="camera"></i> Scansiona testo</button>
+        </div>
+      </div>
+      <div id="pages"></div>
+      <button class="btn primary floatcopy" id="floatCopy" hidden><i data-i="copy"></i> Copia nell'editor</button>
+    </div>
+
+    <div class="foot">
+      <button class="btn primary needpdf" id="expPdf" hidden><i data-i="download"></i> Esporta PDF</button>
+      <button class="btn needpdf" id="expPng" hidden><i data-i="image"></i> PNG</button>
+      <span class="spacer"></span>
+      <span class="status" id="status"><i data-i="info"></i><span>Pronto · carica un PDF</span></span>
+    </div>
+  </section>
+
+  <div id="resizer" role="separator" aria-label="Ridimensiona pannelli"></div>
+
+  <!-- ═════ PANNELLO DESTRO: EDITOR DSA ═════ -->
+  <section class="panel" id="right">
+    <div class="ph">
+      <h2><i data-i="book"></i> Editor DSA</h2>
+      <span class="spacer"></span>
+      <button class="btn" id="readBtn" title="Mostra solo il testo, a tutto schermo"><i data-i="book"></i> Lettura</button>
+      <button class="btn icon" id="dsaBtn" title="Impostazioni di lettura"><i data-i="settings"></i></button>
+    </div>
+    <div class="pbody">
+      <div class="row">
+        <button class="btn primary" id="importAll"><i data-i="filedown"></i> Importa testo dal PDF</button>
+        <button class="btn danger" id="clearEd"><i data-i="trash"></i> Svuota</button>
+      </div>
+      <div class="row">
+        <span class="lbl"><i data-i="highlighter"></i> Formatta</span>
+        <span id="eSw"></span>
+        <button class="btn icon sm" id="eClear" title="Rimuovi formattazione"><i data-i="eraser"></i></button>
+      </div>
+      <div class="checkbar" id="checkBar" hidden>
+        <b id="checkTxt"></b><span class="spacer"></span>
+        <button class="btn sm" id="nextDub" title="Seleziona la prossima parola incerta">Prossima ›</button>
+        <button class="btn sm" id="okDub" title="La parola selezionata è giusta: togli il segno">✓ È giusta</button>
+        <button class="btn sm" id="clearDub" title="Togli tutti i segni arancioni">Togli segni</button>
+      </div>
+      <div class="tts" id="ttsBar" hidden>
+        <button class="btn sm primary" id="ttsPlay" title="Legge dal punto in cui metti il cursore (o il testo selezionato)"><i data-i="volume"></i> Ascolta</button>
+        <button class="btn sm" id="ttsPause" disabled><i data-i="pause"></i> Pausa</button>
+        <button class="btn sm" id="ttsStop" disabled aria-label="Stop"><i data-i="stop"></i></button>
+        <select id="ttsRate" title="Velocità"><option value="0.7">Lenta</option><option value="0.85">Calma</option><option value="1">Normale</option><option value="1.2">Veloce</option></select>
+        <select class="ttsLangSel" title="Lingua della voce: auto la riconosce paragrafo per paragrafo"><option value="auto">Lingua: auto</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="en">English</option></select>
+        <select id="ttsVoice" title="Voce" hidden></select>
+        <span class="langbadge" id="ttsBadge" hidden title="Lingua che sta leggendo"></span>
+      </div>
+      <div class="editor" id="editor" contenteditable="true" spellcheck="false" data-ph="Importa testo dal PDF, copia una selezione o scansiona una pagina…" aria-label="Testo dell'editor"></div>
+      <div class="row">
+        <button class="btn" id="saveAnn"><i data-i="save"></i> Salva</button>
+        <button class="btn" id="expWord"><i data-i="filedown"></i> Word</button>
+        <button class="btn" id="expEdPdf"><i data-i="filedown"></i> PDF</button>
+        <button class="btn" id="aiBtn" title="Correggi gli errori dell’OCR con Copilot o Claude"><i data-i="spark"></i> Correggi con IA</button>
+        <button class="btn" id="expJson" title="Esporta annotazioni in un file"><i data-i="download"></i> File</button>
+        <label class="btn" title="Importa annotazioni da file"><i data-i="fileup"></i> Importa
+          <input type="file" id="jsonIn" accept=".json,application/json"></label>
+      </div>
+      <div class="saved" id="savedList"></div>
+    </div>
+  </section>
+</div>
+
+<!-- Impostazioni DSA -->
+<div class="ov" id="dsaOv" hidden>
+  <div class="modal" role="dialog" aria-label="Impostazioni DSA">
+    <div class="mh"><h3><i data-i="settings"></i> Impostazioni di lettura</h3><button class="btn icon" data-close="dsaOv"><i data-i="x"></i></button></div>
+    <div class="mb">
+      <div class="set"><label>Font</label>
+        <select id="sFont"><option value="Lexend">Lexend (consigliato)</option><option value="Atkinson Hyperlegible">Atkinson Hyperlegible</option><option value="OpenDyslexic">OpenDyslexic</option><option value="Arial">Arial</option><option value="Verdana">Verdana</option></select></div>
+      <div class="set"><label>Dimensione testo <b id="sSizeV"></b></label><input type="range" id="sSize" min="14" max="32" step="1"></div>
+      <div class="set"><label>Interlinea <b id="sLineV"></b></label><input type="range" id="sLine" min="1.2" max="2.5" step="0.1"></div>
+      <div class="set"><label>Spaziatura lettere <b id="sLetV"></b></label><input type="range" id="sLet" min="0" max="0.2" step="0.01"></div>
+      <div class="set"><label>Spaziatura parole <b id="sWordV"></b></label><input type="range" id="sWord" min="0" max="0.5" step="0.05"></div>
+      <div class="set"><label>Tema colore</label><div class="themes" id="sThemes"></div></div>
+      <div class="preview" id="sPrev">Il gatto dorme sul divano. Questo è un esempio di testo con le impostazioni scelte.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Scanner a tutto schermo -->
+<div id="camOv" class="scan" hidden role="dialog" aria-label="Scansiona testo">
+  <div class="sc-top">
+    <button class="sc-ic" id="camClose" aria-label="Chiudi scanner"><i data-i="x"></i></button>
+    <b id="scTitle">Inquadra il testo</b>
+    <select class="sc-sel ocrLangSel" title="Lingua del testo da riconoscere">
+      <option value="ita">Italiano</option><option value="fra">Français</option><option value="deu">Deutsch</option><option value="eng">English</option><option value="mix">Misto (più lento)</option>
+    </select>
+  </div>
+  <div class="sc-stage" id="scStage">
+    <video id="camVideo" autoplay playsinline muted></video>
+    <div class="sc-guide" id="scGuide" hidden></div>
+    <div class="sc-photo" id="scPhoto" hidden>
+      <img id="camImg" alt="Foto scattata">
+      <div class="sc-crop" id="scCrop" hidden><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div>
+      <div class="sc-lines" id="scLines" hidden></div>
+    </div>
+    <div class="sc-err" id="camErr" hidden><p id="camErrTxt"></p>
+      <label class="btn primary sc-big"><i data-i="camera"></i> Scatta o scegli una foto<input type="file" class="photoIn" accept="image/*" capture="environment"></label></div>
+    <div class="sc-proc" id="camProc" hidden><div class="spin"></div><span id="camProcTxt"></span></div>
+  </div>
+  <div class="sc-bar" id="scBarLive">
+    <label class="sc-ic sc-lbl" title="Usa una foto già salvata"><i data-i="image"></i><span>Da foto</span><input type="file" class="photoIn" accept="image/*"></label>
+    <button class="shoot" id="camShoot" aria-label="Scatta"><i data-i="camera"></i></button>
+    <button class="sc-ic sc-lbl" id="camSwitch" title="Cambia fotocamera"><i data-i="switch"></i><span>Gira</span></button>
+  </div>
+  <div class="sc-bar" id="scBarCrop" hidden>
+    <button class="btn scRetry"><i data-i="camera"></i> Rifai</button>
+    <button class="btn" id="scRotate" title="Ruota di 90°"><i data-i="switch"></i> Ruota</button>
+    <button class="btn" id="scFull"><i data-i="fit"></i> Pagina intera</button>
+    <button class="btn primary sc-go" id="scRead"><i data-i="scan"></i> Leggi il testo</button>
+  </div>
+  <div class="sc-sheet" id="scBarSel" hidden>
+    <p class="cammsg" id="camMsg"></p>
+    <div class="row">
+      <button class="btn sm" id="scAll">Tutte</button><button class="btn sm" id="scNone">Nessuna</button>
+      <span class="spacer"></span>
+      <div class="seg" id="scDest" role="group" aria-label="Dove inserire">
+        <button data-dest="editor" class="on"><i data-i="book"></i><span>Editor</span></button>
+        <button data-dest="page"><i data-i="file"></i><span>+ Pagina</span></button>
+      </div>
+    </div>
+    <p class="hint" id="scDub"></p>
+    <details><summary class="hint">Vedi o correggi il testo</summary><textarea class="rtxt" id="camText"></textarea></details>
+    <div class="row sc-end">
+      <button class="btn" id="scBack">‹ Ritaglio</button><button class="btn scRetry"><i data-i="camera"></i> Rifai</button>
+      <span class="spacer"></span>
+      <button class="btn primary" id="camOk"><i data-i="check"></i> Inserisci</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="aiOv" hidden>
+  <div class="modal" role="dialog" aria-label="Correggi con l’IA">
+    <div class="mh"><h3><i data-i="spark"></i> Correggi l’OCR con l’IA</h3><button class="btn icon" data-close="aiOv"><i data-i="x"></i></button></div>
+    <div class="mb">
+      <p class="hint" id="aiScope"></p>
+      <ol class="steps">
+        <li><b>Copia</b> il testo con le istruzioni già pronte.</li>
+        <li><b>Incollalo</b> in Copilot (account della scuola) o in Claude e invia.</li>
+        <li><b>Copia la risposta</b> e incollala qui sotto, poi premi “Sostituisci”.</li>
+      </ol>
+      <div class="row">
+        <button class="btn primary" id="aiCopy"><i data-i="copy"></i> 1 · Copia testo + istruzioni</button>
+        <div class="links"><a class="btn sm" href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">Apri Copilot ↗</a><a class="btn sm" href="https://claude.ai/new" target="_blank" rel="noopener">Apri Claude ↗</a></div>
+      </div>
+      <details><summary class="hint" style="cursor:pointer">Vedi le istruzioni che vengono copiate</summary><div class="prompt" id="aiPrompt"></div></details>
+      <textarea class="rtxt" id="aiPaste" placeholder="3 · Incolla qui il testo corretto…"></textarea>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn" data-close="aiOv">Annulla</button>
+        <button class="btn primary" id="aiApply"><i data-i="check"></i> Sostituisci nell’editor</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="readOv" hidden>
+  <article id="readTxt" lang="it"></article>
+  <nav class="readbar" aria-label="Comandi modalità lettura">
+    <button class="rb rb-play" id="rPlay"><svg class="i" viewBox="0 0 24 24"></svg><span>Leggi</span></button>
+    <button class="rb" id="rStop" disabled aria-label="Stop"><i data-i="stop"></i></button>
+    <div class="rseg" id="rRate" role="group" aria-label="Velocità">
+      <button data-r="0.7">Lenta</button><button data-r="0.85">Calma</button><button data-r="1">Normale</button><button data-r="1.2">Veloce</button>
+    </div>
+    <select class="rsel ttsLangSel" title="Lingua della voce"><option value="auto">Lingua: auto</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="en">English</option></select>
+    <span class="langbadge" id="rBadge" hidden></span>
+    <span class="spacer"></span>
+    <button class="rb" id="readMinus" aria-label="Testo più piccolo">A−</button>
+    <button class="rb" id="readPlus" aria-label="Testo più grande">A+</button>
+    <button class="rb rb-exit" id="readClose" aria-label="Esci dalla modalità lettura"><i data-i="x"></i><span>Esci</span></button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+"use strict";
+/* ───────── icone (stile Lucide) ───────── */
+const ICONS={
+file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+columns:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/>',
+edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+zoomIn:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/>',
+zoomOut:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M8 11h6"/>',
+fit:'<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
+pointer:'<path d="M4 4l7.07 17 2.51-7.39L21 11.07Z"/>',
+pen:'<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+highlighter:'<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>',
+type:'<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+eraser:'<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7M5 11l9 9"/>',
+chevUp:'<path d="m18 15-6-6-6 6"/>',chevDown:'<path d="m6 9 6 6 6-6"/>',
+trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+scan:'<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/>',
+crop:'<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>',
+camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"/><circle cx="12" cy="13" r="3"/>',
+copy:'<rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+x:'<path d="M18 6 6 18M6 6l12 12"/>',
+download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+settings:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/>',
+book:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2ZM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7Z"/>',
+switch:'<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16M16 16h5v5"/>',
+zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/>',
+check:'<path d="M20 6 9 17l-5-5"/>',
+spark:'<path d="M9.94 14.06 4 20M12 3l1.8 4.6L18.5 9.5l-4.7 1.9L12 16l-1.8-4.6L5.5 9.5l4.7-1.9Z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7Z"/>',
+move:'<path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>',
+volume:'<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
+pause:'<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',
+play:'<path d="m6 3 14 9-14 9Z"/>',
+stop:'<rect x="5" y="5" width="14" height="14" rx="1"/>',
+filedown:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M12 12v6M9 15l3 3 3-3"/>',
+fileup:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M12 18v-6M9 15l3-3 3 3"/>'
+};
+const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
+function paintIcons(root=document){root.querySelectorAll('i[data-i]').forEach(el=>{el.outerHTML=ic(el.dataset.i)})}
+paintIcons();
+
+/* ───────── utilità ───────── */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const uid=()=>Date.now().toString(36)+Math.random().toString(16).slice(2,8);
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toHtml=t=>esc(t).replace(/\n/g,'<br>');
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}};
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2600)}
+function setStatus(m,busy){const s=$('#status');s.lastElementChild.textContent=m;s.classList.toggle('busy',!!busy)}
+function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){res();return}const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('Impossibile caricare '+src+' (serve internet)'));document.head.appendChild(s)})}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+const HL=[{n:'yellow',c:'#FBBF24',l:'giallo'},{n:'green',c:'#34D399',l:'verde'},{n:'blue',c:'#60A5FA',l:'blu'},{n:'pink',c:'#F472B6',l:'rosa'}];
+const UL=[{n:'red',c:'#EF4444',l:'rosso'},{n:'blue',c:'#3B82F6',l:'blu'}];
+const NOTE_COL={yellow:['rgba(251,191,36,.95)','#F59E0B'],blue:['rgba(147,197,253,.97)','#3B82F6'],green:['rgba(110,231,183,.97)','#10B981'],pink:['rgba(249,168,212,.97)','#EC4899']};
+const STORAGE_KEY='pdf-dsa-annotations';
+
+/* ───────── PDF.js ───────── */
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+(async()=>{ // worker come blob: funziona anche aprendo il file dal disco
+  try{const r=await fetch(PDFJS+'pdf.worker.min.js');const t=await r.text();pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:'text/javascript'}))}
+  catch(e){pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'}
+})();
+
+/* ───────── stato ───────── */
+const S={
+  pages:[],          // {doc, num, w, h, scanned}
+  scale:1, mode:'', fileName:'',
+  penColor:'#EF4444', penSize:3, hlColor:'#FBBF24', hlSize:20, noteColor:'yellow',
+  drawings:{}, highlights:[], notes:[], selNote:null,
+  saved:store.get(STORAGE_KEY,[]),
+  dsa:Object.assign({fontFamily:'Lexend',fontSize:18,lineHeight:1.8,letterSpacing:.05,wordSpacing:.15,theme:'cream'},store.get('pdf-dsa-settings',{})),
+  panelOpen:true, view:'split', viewerW:60
+};
+let lastSel=null; // {range,text,isEditor}
+const viewer=$('#viewer'), pagesEl=$('#pages'), editor=$('#editor');
+
+/* ───────── interfaccia: campioni colore ───────── */
+function swatches(target,where){
+  const box=$(target);
+  box.innerHTML=HL.map(c=>`<button class="sw" data-cls="hl-${c.n}" title="Evidenzia ${c.l}" aria-label="Evidenzia ${c.l}"><i style="background:${c.c}"></i></button>`).join('')+
+    '<span class="sep" style="display:inline-block;vertical-align:middle"></span>'+
+    UL.map(c=>`<button class="sw ul" data-cls="ul-${c.n}" title="Sottolinea ${c.l}" aria-label="Sottolinea ${c.l}"><i style="background:${c.c}"></i></button>`).join('');
+  box.style.display='inline-flex';box.style.gap='5px';box.style.alignItems='center';
+  box.querySelectorAll('.sw').forEach(b=>{
+    b.addEventListener('mousedown',e=>e.preventDefault());
+    b.addEventListener('click',()=>applyFormatting(b.dataset.cls,where));
+  });
+}
+swatches('#vSw','viewer');swatches('#eSw','editor');
+$('#hlSw').style.cssText='display:inline-flex;gap:5px';
+$('#hlSw').innerHTML=HL.map(c=>`<button class="sw${c.c===S.hlColor?' on':''}" data-c="${c.c}" title="${c.l}"><i style="background:${c.c}"></i></button>`).join('');
+$('#hlSw').addEventListener('click',e=>{const b=e.target.closest('.sw');if(!b)return;S.hlColor=b.dataset.c;$$('#hlSw .sw').forEach(x=>x.classList.toggle('on',x===b))});
+$('#noteColors').innerHTML=HL.map(c=>`<button class="cdot${c.n===S.noteColor?' on':''}" data-n="${c.n}" title="Colore nota ${c.l}" style="background:${c.c}"></button>`).join('');
+$('#noteColors').addEventListener('click',e=>{const b=e.target.closest('.cdot');if(!b)return;S.noteColor=b.dataset.n;$$('#noteColors .cdot').forEach(x=>x.classList.toggle('on',x===b))});
+
+$('#penColor').oninput=e=>S.penColor=e.target.value;
+$('#penSize').oninput=e=>{S.penSize=+e.target.value;$('#penSizeV').textContent=S.penSize+'px'};
+$('#hlSize').oninput=e=>{S.hlSize=+e.target.value;$('#hlSizeV').textContent=S.hlSize+'px'};
+
+/* ───────── viste e ridimensionamento ───────── */
+function setView(v){S.view=v;$('#main').className='main'+(v==='split'?'':' v-'+v);$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.view===v))}
+$$('.seg button').forEach(b=>b.onclick=()=>{const v=b.dataset.view;setView(S.view===v?'split':v)});
+(()=>{const rz=$('#resizer');let on=false;
+  rz.addEventListener('pointerdown',e=>{on=true;rz.setPointerCapture(e.pointerId);document.body.style.userSelect='none'});
+  rz.addEventListener('pointermove',e=>{if(!on)return;const r=$('#main').getBoundingClientRect();const p=(e.clientX-r.left)/r.width*100;if(p>20&&p<80){S.viewerW=p;$('#left').style.flex=`0 0 ${p}%`}});
+  rz.addEventListener('pointerup',()=>{on=false;document.body.style.userSelect=''});
+})();
+$('#togglePanel').onclick=()=>{S.panelOpen=!S.panelOpen;$('#opts').hidden=!S.panelOpen;$('#togglePanel').innerHTML=S.panelOpen?ic('chevUp')+'<span>Meno opzioni</span>':ic('chevDown')+'<span>Più opzioni</span>'};
+
+/* ───────── modalità strumenti ───────── */
+const MODE_TXT={pen:['pen','Penna attiva · disegna sulla pagina'],hl:['highlighter','Evidenziatore attivo · passa sopra al testo'],note:['type','Tocca la pagina per aggiungere una nota'],area:['crop','Disegna un rettangolo sull’area da leggere con l’OCR']};
+function setMode(m){
+  S.mode=S.mode===m?'':m;
+  viewer.classList.remove('mode-pen','mode-hl','mode-note','mode-area');
+  if(S.mode)viewer.classList.add('mode-'+S.mode);
+  $$('#modeGrp .tbtn').forEach(b=>b.classList.toggle('on',b.dataset.mode===S.mode));
+  $('#penOpts').hidden=S.mode!=='pen';$('#hlOpts').hidden=S.mode!=='hl';
+  $('#noteColors').hidden=S.mode!=='note';$('#clearDraw').hidden=!(S.mode==='pen'||S.mode==='hl');
+  $('#modebar').hidden=!S.mode;
+  if(S.mode){const[i,t]=MODE_TXT[S.mode];$('#modeTxt').innerHTML=`<span style="display:inline-flex;gap:6px;align-items:center">${ic(i)} ${t}</span>`;
+    $('#modeExit').innerHTML=S.mode==='area'?ic('x')+' Annulla':ic('pointer')+' Selezione';$('#modeExit').classList.toggle('danger',S.mode==='area')}
+  $('#ocrArea').innerHTML=S.mode==='area'?ic('x')+' Annulla':ic('crop')+' OCR area';
+  $('#ocrArea').classList.toggle('primary',S.mode!=='area');$('#ocrArea').classList.toggle('danger',S.mode==='area');
+  if(S.mode==='area'&&!S.panelOpen) {/* ok */}
+}
+$$('#modeGrp .tbtn').forEach(b=>b.onclick=()=>b.dataset.mode?setMode(b.dataset.mode):(S.mode&&setMode(S.mode)));
+$('#modeExit').onclick=()=>{if(S.mode)setMode(S.mode)};
+$('#ocrArea').onclick=()=>setMode('area');
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#camOv').hidden)closeCam();else if(!$('#dsaOv').hidden)$('#dsaOv').hidden=true;else if(!$('#aiOv').hidden)$('#aiOv').hidden=true;else if(S.mode)setMode(S.mode)}});
+$('#clearDraw').onclick=()=>{if(!Object.keys(S.drawings).length)return;S.drawings={};$$('canvas.drawc').forEach(c=>c.getContext('2d').clearRect(0,0,c.width,c.height));setStatus('Disegni cancellati')};
+
+/* ───────── caricamento documenti ───────── */
+async function openFiles(files,append){
+  files=[...files];if(!files.length)return;
+  const pdfs=files.filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name)), imgs=files.filter(f=>f.type.startsWith('image/'));
+  try{
+    if(pdfs.length){await loadPdf(pdfs[0])}
+    for(const f of imgs){await addImagePage(await loadPhoto(f),f.name)}
+  }catch(err){console.error(err);setStatus('Errore nel caricamento: '+err.message)}
+}
+// Carica una foto già ridotta (lato lungo max 2400 px): evita i limiti di memoria di Safari su iPhone
+// e rende l'OCR più veloce senza perdere qualità di lettura.
+function loadPhoto(f,max=2400){
+  // prima via blob:, poi (se il visualizzatore lo blocca) via FileReader
+  const decode=src=>new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=rej;img.src=src});
+  const shrink=img=>{let w=img.naturalWidth,h=img.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+    const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);return c.toDataURL('image/jpeg',.9)};
+  return (async()=>{
+    let url=null;
+    try{url=URL.createObjectURL(f);const img=await decode(url);return shrink(img)}catch(e){}finally{if(url)URL.revokeObjectURL(url)}
+    try{const img=await decode(await fileToDataURL(f));return shrink(img)}catch(e){}
+    throw new Error('Impossibile aprire la foto in questo visualizzatore');
+  })();
+}
+function fileToDataURL(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
+async function loadPdf(file){
+  setStatus('Caricamento PDF…',true);
+  const buf=await file.arrayBuffer();
+  const doc=await pdfjsLib.getDocument({data:buf}).promise;
+  resetAll();S.fileName=file.name;
+  for(let i=1;i<=doc.numPages;i++){const p=await doc.getPage(i);const vp=p.getViewport({scale:1});S.pages.push({doc,num:i,w:vp.width,h:vp.height,scanned:false})}
+  S.scale=1;await renderPages();setStatus(`PDF caricato · ${doc.numPages} pagin${doc.numPages===1?'a':'e'}`);
+  if(innerWidth<760&&S.panelOpen)$('#togglePanel').click();
+  requestAnimationFrame(fitWidth);
+}
+// una foto diventa una pagina PDF (così si annota e si esporta come le altre)
+async function addImagePage(dataUrl,name){
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=dataUrl});
+  let w=img.naturalWidth,h=img.naturalHeight;const max=1700;if(Math.max(w,h)>max){const k=max/Math.max(w,h);w=Math.round(w*k);h=Math.round(h*k)}
+  const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+  const pw=w*0.6,ph=h*0.6;const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({unit:'pt',format:[pw,ph],orientation:pw>ph?'l':'p'});
+  pdf.addImage(c.toDataURL('image/jpeg',0.88),'JPEG',0,0,pw,ph);
+  const doc=await pdfjsLib.getDocument({data:pdf.output('arraybuffer')}).promise;
+  if(!S.pages.length){resetAll();S.fileName=(name||'foto').replace(/\.[^.]+$/,'')+'.pdf'}
+  const vp=(await doc.getPage(1)).getViewport({scale:1});
+  S.pages.push({doc,num:1,w:vp.width,h:vp.height,scanned:true});
+  await renderPages();if(S.pages.length===1)requestAnimationFrame(fitWidth);
+  setStatus(`Foto aggiunta come pagina ${S.pages.length}`);
+  return S.pages.length;
+}
+function resetAll(){S.pages=[];S.drawings={};S.highlights=[];S.notes=[];S.selNote=null;S.fileName='';pagesEl.innerHTML='';if(S.mode)setMode(S.mode)}
+function updateChrome(){
+  const has=S.pages.length>0;
+  $('#empty').hidden=has;$('#toolbar').hidden=!has;$('#delPdf').hidden=!has;
+  $$('.needpdf').forEach(e=>e.hidden=!has);
+  $('#pgBadge').textContent=has?`${S.pages.length} pagin${S.pages.length===1?'a':'e'}`:'Nessun PDF';
+  $('#zVal').textContent=Math.round(S.scale*100)+'%';
+}
+$('#fileIn').onchange=e=>{openFiles(e.target.files);e.target.value=''};
+$('.fileIn2').onchange=e=>{openFiles(e.target.files);e.target.value=''};
+$('#delPdf').onclick=()=>{resetAll();updateChrome();setStatus('PDF eliminato · carica un nuovo PDF')};
+viewer.addEventListener('dragover',e=>{e.preventDefault();viewer.classList.add('drop')});
+viewer.addEventListener('dragleave',()=>viewer.classList.remove('drop'));
+viewer.addEventListener('drop',e=>{e.preventDefault();viewer.classList.remove('drop');openFiles(e.dataTransfer.files)});
+
+/* ───────── rendering pagine (pigro: solo quelle visibili) ───────── */
+let io=null, renderGen=0;
+async function renderPages(){
+  renderGen++;const gen=renderGen;
+  if(io)io.disconnect();
+  pagesEl.innerHTML='';
+  io=new IntersectionObserver(ents=>ents.forEach(en=>{if(en.isIntersecting&&!en.target._done){en.target._done=true;drawPage(en.target,gen)}}),{root:viewer,rootMargin:'600px 0px'});
+  S.pages.forEach((p,i)=>{
+    const n=i+1, W=Math.floor(p.w*S.scale), H=Math.floor(p.h*S.scale);
+    const cont=document.createElement('div');cont.className='pcont';
+    cont.innerHTML=`<div class="page" data-page="${n}" style="width:${W}px;height:${H}px;--scale-factor:${S.scale}">
+      <div class="pbadge">Pag. ${n}</div>
+      <canvas class="pdfc" style="width:${W}px;height:${H}px"></canvas>
+      <div class="hlov"></div><div class="textLayer"></div>
+      <canvas class="drawc" width="${W}" height="${H}" style="width:${W}px;height:${H}px"></canvas>
+      <div class="capture"></div><div class="notes"></div></div>
+      <div class="pact"><button class="btn sm" data-act="copy"><i data-i="copy"></i> Copia pagina</button>
+      <button class="btn sm" data-act="ocr" ${p.scanned?'':'hidden'}><i data-i="scan"></i> OCR</button></div>`;
+    paintIcons(cont);
+    pagesEl.appendChild(cont);
+    const pg=cont.firstElementChild;
+    wirePage(pg,n);
+    cont.querySelector('[data-act=copy]').onclick=()=>copyPageToEditor(n);
+    cont.querySelector('[data-act=ocr]').onclick=()=>runOCR(n);
+    drawHighlights(n);drawNotes(n);
+    io.observe(pg);
+  });
+  updateChrome();
+}
+async function drawPage(pg,gen){
+  const n=+pg.dataset.page, p=S.pages[n-1];if(!p)return;
+  try{
+    const page=await p.doc.getPage(p.num);if(gen!==renderGen)return;
+    const vp=page.getViewport({scale:S.scale});
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const c=pg.querySelector('canvas.pdfc');c.width=Math.floor(vp.width*dpr);c.height=Math.floor(vp.height*dpr);
+    await page.render({canvasContext:c.getContext('2d'),viewport:vp,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null}).promise;
+    if(gen!==renderGen)return;
+    loadDrawing(n,pg.querySelector('canvas.drawc'));
+    const tc=await page.getTextContent();if(gen!==renderGen)return;
+    const has=tc.items.some(it=>it.str&&it.str.trim());
+    if(!has&&!p.scanned){p.scanned=true;pg.parentElement.querySelector('[data-act=ocr]').hidden=false}
+    const tl=pg.querySelector('.textLayer');tl.innerHTML='';
+    const task=pdfjsLib.renderTextLayer({textContentSource:tc,container:tl,viewport:vp,textDivs:[]});
+    await (task.promise||task);
+  }catch(err){if(err&&err.name!=='RenderingCancelledException')console.error('Pagina',n,err)}
+}
+function zoomTo(s){s=Math.max(.3,Math.min(3,Math.round(s*100)/100));if(s===S.scale)return;
+  const ratio=viewer.scrollTop/(viewer.scrollHeight||1);S.scale=s;renderPages().then(()=>{viewer.scrollTop=ratio*viewer.scrollHeight})}
+function fitWidth(){if(!S.pages.length)return;const w=Math.max(...S.pages.map(p=>p.w));zoomTo((viewer.clientWidth-36)/w)}
+$('#zIn').onclick=()=>zoomTo(S.scale+.15);$('#zOut').onclick=()=>zoomTo(S.scale-.15);$('#zFit').onclick=fitWidth;
+
+/* ───────── disegno: penna ed evidenziatore ───────── */
+function loadDrawing(n,c){const d=S.drawings[n];const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);if(!d)return;const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,c.width,c.height);img.src=d}
+function wirePage(pg,n){
+  const dc=pg.querySelector('canvas.drawc'), cap=pg.querySelector('.capture');
+  let drawing=false, base=null, tmp=null, tctx=null;
+  const pos=e=>{const r=dc.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
+  dc.addEventListener('pointerdown',e=>{
+    if(S.mode!=='pen'&&S.mode!=='hl')return;e.preventDefault();dc.setPointerCapture(e.pointerId);drawing=true;const{x,y}=pos(e);
+    if(S.mode==='hl'){
+      base=document.createElement('canvas');base.width=dc.width;base.height=dc.height;base.getContext('2d').drawImage(dc,0,0);
+      tmp=document.createElement('canvas');tmp.width=dc.width;tmp.height=dc.height;tctx=tmp.getContext('2d');
+      Object.assign(tctx,{strokeStyle:S.hlColor,lineWidth:S.hlSize,lineCap:'round',lineJoin:'round'});tctx.beginPath();tctx.moveTo(x,y);tctx.lineTo(x+.1,y);tctx.stroke();
+    }else{const ctx=dc.getContext('2d');Object.assign(ctx,{globalAlpha:1,globalCompositeOperation:'source-over',strokeStyle:S.penColor,lineWidth:S.penSize,lineCap:'round',lineJoin:'round'});ctx.beginPath();ctx.moveTo(x,y)}
+  });
+  dc.addEventListener('pointermove',e=>{
+    if(!drawing)return;e.preventDefault();const{x,y}=pos(e);
+    if(S.mode==='hl'&&tctx){tctx.lineTo(x,y);tctx.stroke();const ctx=dc.getContext('2d');ctx.clearRect(0,0,dc.width,dc.height);ctx.drawImage(base,0,0);ctx.globalAlpha=.3;ctx.drawImage(tmp,0,0);ctx.globalAlpha=1}
+    else{const ctx=dc.getContext('2d');ctx.lineTo(x,y);ctx.stroke()}
+  });
+  const end=()=>{if(!drawing)return;drawing=false;base=tmp=tctx=null;S.drawings[n]=dc.toDataURL()};
+  dc.addEventListener('pointerup',end);dc.addEventListener('pointercancel',end);
+
+  // note e selezione area OCR
+  let start=null, box=null;
+  cap.addEventListener('pointerdown',e=>{
+    const r=pg.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+    if(S.mode==='note'){e.preventDefault();addNote(n,x/S.scale,y/S.scale);return}
+    if(S.mode==='area'){e.preventDefault();cap.setPointerCapture(e.pointerId);start={x,y};box=document.createElement('div');box.className='areasel';Object.assign(box.style,{left:x+'px',top:y+'px',width:0,height:0});pg.appendChild(box)}
+  });
+  cap.addEventListener('pointermove',e=>{
+    if(!start||!box)return;const r=pg.getBoundingClientRect(), x=Math.max(0,Math.min(r.width,e.clientX-r.left)), y=Math.max(0,Math.min(r.height,e.clientY-r.top));
+    box._r={x:Math.min(start.x,x),y:Math.min(start.y,y),w:Math.abs(x-start.x),h:Math.abs(y-start.y)};
+    Object.assign(box.style,{left:box._r.x+'px',top:box._r.y+'px',width:box._r.w+'px',height:box._r.h+'px'});
+  });
+  cap.addEventListener('pointerup',async()=>{
+    if(!start||!box)return;const rr=box._r;start=null;
+    if(!rr||rr.w<10||rr.h<10){box.remove();box=null;setStatus('Selezione troppo piccola, riprova');return}
+    const b=box;box=null;setMode('area');
+    await runOCROnArea(n,{x:rr.x/S.scale,y:rr.y/S.scale,w:rr.w/S.scale,h:rr.h/S.scale});b.remove();
+  });
+}
+
+/* ───────── evidenziature sul PDF ───────── */
+function drawHighlights(n){
+  const pg=pagesEl.querySelector(`.page[data-page="${n}"]`);if(!pg)return;
+  pg.querySelector('.hlov').innerHTML=S.highlights.filter(h=>h.page===n).map(h=>`<div class="hlbox ${h.className}" style="left:${h.x*S.scale}px;top:${h.y*S.scale}px;width:${h.w*S.scale}px;height:${h.h*S.scale}px"></div>`).join('');
+}
+function applyFormatting(cls,where){
+  const sv=lastSel;
+  if(!sv||!sv.text||!sv.range){toast(where==='editor'?'Seleziona prima del testo nell’editor':'Seleziona prima del testo nel PDF');return}
+  if(sv.isEditor!==(where==='editor')){toast(where==='editor'?'La selezione è nel PDF: usa i colori sopra il PDF':'La selezione è nell’editor: usa i colori dell’editor');return}
+  try{
+    if(where==='viewer'){
+      const r=sv.range, el=r.startContainer.nodeType===1?r.startContainer:r.startContainer.parentElement;
+      const pg=el&&el.closest('.page');if(!pg)return;
+      const n=+pg.dataset.page, pr=pg.getBoundingClientRect();
+      [...r.getClientRects()].filter(q=>q.width>1&&q.height>1).forEach(q=>S.highlights.push({id:uid(),page:n,className:cls,x:(q.left-pr.left)/S.scale,y:(q.top-pr.top)/S.scale,w:q.width/S.scale,h:q.height/S.scale}));
+      drawHighlights(n);
+    }else{
+      const r=sv.range;if(!editor.contains(r.commonAncestorContainer))return;
+      const span=document.createElement('span');span.className=cls;span.appendChild(r.extractContents());r.insertNode(span);editor.normalize();
+    }
+  }catch(err){console.error(err)}
+  lastSel=null;$('#floatCopy').hidden=true;try{getSelection().removeAllRanges()}catch(e){}
+}
+$('#vClear').onclick=()=>{S.highlights=[];S.pages.forEach((_,i)=>drawHighlights(i+1));setStatus('Evidenziature rimosse')};
+$('#eClear').onclick=()=>{editor.querySelectorAll('span[class^="hl-"],span[class^="ul-"]').forEach(s=>{while(s.firstChild)s.parentNode.insertBefore(s.firstChild,s);s.remove()});editor.normalize()};
+
+// memorizza la selezione (anche su iPad / Apple Pencil)
+function captureSel(){
+  const sel=getSelection();if(!sel||!sel.rangeCount)return;
+  const text=sel.toString(), r=sel.getRangeAt(0);
+  const inEd=editor.contains(r.commonAncestorContainer), inV=pagesEl.contains(r.commonAncestorContainer);
+  if(text.trim()&&(inEd||inV)){lastSel={range:r.cloneRange(),text,isEditor:inEd};$('#floatCopy').hidden=!inV}
+  else if(!text.trim()){$('#floatCopy').hidden=true}
+}
+document.addEventListener('selectionchange',captureSel);
+['mouseup','touchend','pointerup'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(captureSel,/iPad|iPhone/.test(navigator.userAgent)?150:30)));
+
+/* ───────── note ───────── */
+function addNote(n,x,y){const a={id:'txt-'+uid(),page:n,x,y,text:'',color:S.noteColor,isNew:true,timestamp:Date.now()};S.notes.push(a);S.selNote=a.id;drawNotes(n,a.id)}
+function drawNotes(n,editId){
+  const pg=pagesEl.querySelector(`.page[data-page="${n}"]`);if(!pg)return;
+  const lay=pg.querySelector('.notes');lay.innerHTML='';
+  S.notes.filter(a=>a.page===n).forEach(a=>{
+    const [bg,bd]=NOTE_COL[a.color]||NOTE_COL.yellow, el=document.createElement('div');
+    el.className='note'+(S.selNote===a.id?' sel':'');Object.assign(el.style,{left:a.x*S.scale+'px',top:a.y*S.scale+'px',background:bg,borderColor:bd,zIndex:S.selNote===a.id?100:10});
+    const editing=editId===a.id||a.isNew;
+    if(editing){
+      el.innerHTML=`<textarea rows="3" placeholder="Scrivi nota…"></textarea><div class="na"><button class="ok" title="Salva">${ic('check')}</button><button class="no" title="Annulla">${ic('x')}</button></div>`;
+      const ta=el.querySelector('textarea');ta.value=a.text||'';
+      const save=()=>{const t=ta.value.trim();if(t){a.text=t;a.isNew=false}else S.notes=S.notes.filter(x=>x!==a);drawNotes(n)};
+      const cancel=()=>{if(a.isNew)S.notes=S.notes.filter(x=>x!==a);drawNotes(n)};
+      el.querySelector('.ok').onclick=save;el.querySelector('.no').onclick=cancel;
+      ta.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();save()}if(e.key==='Escape'){e.stopPropagation();cancel()}};
+      el._focus=ta;
+    }else{
+      el.innerHTML=`<div class="nh"><span class="drag" title="Trascina per spostare">${ic('move')}</span>${S.selNote===a.id?`<button class="del" title="Elimina nota">${ic('x')}</button>`:''}</div><div class="nt"></div>`;
+      el.querySelector('.nt').textContent=a.text;
+      el.addEventListener('pointerdown',e=>{if(S.selNote!==a.id&&!e.target.closest('.drag')){S.selNote=a.id;drawNotes(n)}});
+      el.addEventListener('dblclick',e=>{e.stopPropagation();drawNotes(n,a.id)});
+      const del=el.querySelector('.del');if(del)del.onclick=e=>{e.stopPropagation();S.notes=S.notes.filter(x=>x!==a);drawNotes(n)};
+      const h=el.querySelector('.drag');
+      h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();S.selNote=a.id;h.setPointerCapture(e.pointerId);const r=el.getBoundingClientRect();const off={x:e.clientX-r.left,y:e.clientY-r.top};
+        const mv=ev=>{const pr=pg.getBoundingClientRect();a.x=Math.max(0,(ev.clientX-pr.left-off.x)/S.scale);a.y=Math.max(0,(ev.clientY-pr.top-off.y)/S.scale);el.style.left=a.x*S.scale+'px';el.style.top=a.y*S.scale+'px'};
+        const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);drawNotes(n)};
+        h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up)});
+    }
+    lay.appendChild(el);
+    if(el._focus)el._focus.focus();
+  });
+}
+
+/* ───────── estrazione testo ───────── */
+function itemsToText(items){
+  let text='',last=null;
+  items.forEach(it=>{
+    if(!it.str)return;
+    const y=it.transform?.[5]||0,x=it.transform?.[4]||0,h=it.height||(it.transform?Math.hypot(it.transform[0],it.transform[1]):12);
+    if(last){
+      const ly=last.transform?.[5]||0,lx=last.transform?.[4]||0,lw=last.width||0,lh=last.height||12;
+      if(Math.abs(y-ly)>Math.min(h,lh)*.35){if(text.endsWith('-'))text=text.slice(0,-1);else text+='\n'}
+      else{const gap=x-(lx+lw),avg=lw/Math.max(last.str.length,1);if(gap>avg*.4&&!text.endsWith(' ')&&!text.endsWith('\n'))text+=' '}
+    }
+    text+=it.str;last=it;
+  });
+  return text;
+}
+function tidy(text){
+  const lines=text.split('\n').map(l=>l.replace(/\s{2,}/g,' ').trim()).filter(Boolean);
+  let out='';
+  lines.forEach((l,j)=>{out+=l;const nx=lines[j+1];if(nx){out+=(/[.!?:;]$/.test(l)||(/^[A-ZÀÈÌÒÙÁÉÍÓÚ]/.test(nx)&&l.length<40))?'\n':' '}});
+  return out;
+}
+async function pageText(n){const p=S.pages[n-1];const pg=await p.doc.getPage(p.num);const tc=await pg.getTextContent();return tidy(itemsToText(tc.items))}
+function edAppend(html){editor.insertAdjacentHTML('beforeend',html)}
+async function importAll(){
+  if(!S.pages.length){toast('Carica prima un PDF');return}
+  setStatus('Importazione testo…',true);let html='',corrupt=false,empty=[];
+  for(let i=1;i<=S.pages.length;i++){
+    const t=await pageText(i);
+    if(!t.trim()){empty.push(i);continue}
+    if(t.length>20){const bad=(t.match(/[^\w\sàèìòùáéíóúâêîôûäëïöüçñ.,;:!?'"()\-–—’«»]/gi)||[]).length;if(bad/t.length>.15)corrupt=true}
+    html+=`<div class="sec">— Pagina ${i} —</div><div>${toHtml(t)}</div>`;
+  }
+  editor.innerHTML=html;
+  if(corrupt)setStatus('⚠️ Testo illeggibile in alcune pagine · usa “OCR area”');
+  else if(empty.length)setStatus(`Testo importato · pagine senza testo (${empty.join(', ')}): usa OCR`);
+  else setStatus('Testo importato nell’editor');
+}
+async function copyPageToEditor(n){
+  const t=await pageText(n);
+  if(!t.trim()){setStatus(`Pagina ${n} senza testo · usa OCR`);toast('Questa pagina è un’immagine: usa OCR');return}
+  edAppend(`<div class="sec">— Pagina ${n} —</div><div>${toHtml(t)}</div><br>`);setStatus(`Pagina ${n} copiata nell’editor`);
+}
+function copySelection(){
+  let t=lastSel&&!lastSel.isEditor?lastSel.text.trim():'';
+  if(!t){const s=getSelection();t=s?s.toString().trim():''}
+  if(!t){setStatus('Seleziona del testo nel PDF');toast('Seleziona del testo nel PDF');return}
+  edAppend(`<div>${toHtml(t)}</div>`);setStatus('Copiato nell’editor');
+  lastSel=null;$('#floatCopy').hidden=true;try{getSelection().removeAllRanges()}catch(e){}
+}
+$('#importAll').onclick=importAll;$('#copySel').onclick=copySelection;$('#floatCopy').onclick=copySelection;
+$('#floatCopy').addEventListener('mousedown',e=>e.preventDefault());
+$('#clearEd').onclick=()=>{if(!editor.textContent.trim())return;const keep=editor.innerHTML;editor.innerHTML='';toastUndo(()=>editor.innerHTML=keep)};
+function toastUndo(fn){const t=$('#toast');t.innerHTML='Editor svuotato · <button style="background:none;border:0;color:#9fe0c9;font-weight:700;cursor:pointer;pointer-events:auto">Annulla</button>';t.style.pointerEvents='auto';t.classList.add('show');t.querySelector('button').onclick=()=>{fn();t.classList.remove('show')};clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show');t.style.pointerEvents=''},5000)}
+
+/* ───────── OCR (Tesseract, gratuito, nel browser) ─────────
+   Lingue: italiano (+inglese), francese, tedesco, inglese o tutte insieme (più lento). */
+const OCR_LANGS={ita:'ita+eng',fra:'fra',deu:'deu',eng:'eng',mix:'ita+fra+deu+eng'};
+S.ocrLang=store.get('pdf-dsa-ocrlang','ita');
+let worker=null, workerP=null, workerLang='', ocrProg=null, ocrBusy=false;
+async function getWorker(){
+  const want=OCR_LANGS[S.ocrLang]||'ita+eng';
+  if(!workerP)workerP=(async()=>{
+    setStatus('Preparo l’OCR (solo la prima volta, qualche secondo)…',true);
+    await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+    worker=await Tesseract.createWorker(want,1,{logger:m=>{if(m.status==='recognizing text'&&ocrProg)ocrProg(m.progress)}});
+    workerLang=want;return worker;
+  })().catch(e=>{workerP=null;throw e});
+  await workerP;
+  if(workerLang!==want){setStatus('Carico la lingua per l’OCR (solo la prima volta)…',true);await worker.reinitialize(want,1);workerLang=want}
+  return worker;
+}
+function setOcrLang(v){S.ocrLang=v;store.set('pdf-dsa-ocrlang',v);$$('.ocrLangSel').forEach(s=>s.value=v)}
+const DUB_CONF=70; // sotto questa sicurezza (0-100) la parola viene segnata in arancione
+function capCanvas(c,max=2400){if(Math.max(c.width,c.height)<=max)return c;const k=max/Math.max(c.width,c.height),o=document.createElement('canvas');o.width=Math.round(c.width*k);o.height=Math.round(c.height*k);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o}
+function toCanvas(src){
+  if(src instanceof HTMLCanvasElement)return Promise.resolve(src);
+  return new Promise((res,rej)=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas');c.width=i.naturalWidth;c.height=i.naturalHeight;c.getContext('2d').drawImage(i,0,0);res(c)};i.onerror=rej;i.src=src});
+}
+// Pulizia: ingrandisce i testi piccoli, scala di grigi, contrasto, poi bianco/nero "adattivo"
+// (soglia locale, regge ombre e fotocopie grigie). Il raddrizzamento lo fa Tesseract (rotateAuto).
+function preprocess(src){
+  let w=src.width,h=src.height,k=1;
+  if(w<1800)k=Math.min(3,1800/w);
+  if(w*k*h*k>7e6)k=Math.sqrt(7e6/(w*h));
+  w=Math.round(w*k);h=Math.round(h*k);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(src,0,0,w,h);
+  const im=ctx.getImageData(0,0,w,h),d=im.data,N=w*h,g=new Uint8ClampedArray(N),hist=new Uint32Array(256);
+  for(let i=0,j=0;i<N;i++,j+=4){const v=(d[j]*299+d[j+1]*587+d[j+2]*114)/1000|0;g[i]=v;hist[v]++}
+  let lo=0,hi=255,acc=0;for(;lo<255&&(acc+=hist[lo])<N*.01;lo++);acc=0;for(;hi>0&&(acc+=hist[hi])<N*.01;hi--);
+  if(hi-lo>20){const f=255/(hi-lo);for(let i=0;i<N;i++)g[i]=(g[i]-lo)*f}
+  {const b=new Uint8ClampedArray(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=h)continue;for(let dx=-1;dx<=1;dx++){const xx=x+dx;if(xx<0||xx>=w)continue;s+=g[yy*w+xx];c++}}b[y*w+x]=s/c}g.set(b)} // antirumore
+  const W=w+1,I=new Uint32Array(W*(h+1));
+  for(let y=1;y<=h;y++){let row=0;for(let x=1;x<=w;x++){row+=g[(y-1)*w+x-1];I[y*W+x]=I[(y-1)*W+x]+row}}
+  const r=Math.max(8,Math.round(w/32)),t=0.15;
+  for(let y=0;y<h;y++){const y1=Math.max(0,y-r),y2=Math.min(h,y+r+1);for(let x=0;x<w;x++){const x1=Math.max(0,x-r),x2=Math.min(w,x+r+1);
+    const sum=I[y2*W+x2]-I[y1*W+x2]-I[y2*W+x1]+I[y1*W+x1],cnt=(x2-x1)*(y2-y1),v=(g[y*w+x]*cnt<=sum*(1-t))?0:255,j=(y*w+x)*4;d[j]=d[j+1]=d[j+2]=v;d[j+3]=255}}
+  ctx.putImageData(im,0,0);return c;
+}
+// Righe riconosciute (con riquadro e paragrafo). ok=false: riga nata da foto/disegni (sicurezza bassa o “sillabe” sparse)
+function extractLines(data){
+  const out=[];let pi=0;
+  (data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>{pi++;(p.lines||[]).forEach(l=>{
+    const ws=(l.words||[]).map(wd=>({t:(wd.text||'').replace(/[ﬁ]/g,'fi').replace(/[ﬂ]/g,'fl'),c:wd.confidence})).filter(w=>w.t);
+    if(!ws.length)return;
+    const mean=ws.reduce((a,w)=>a+w.c,0)/ws.length, real=ws.filter(w=>/[\p{L}]{3,}/u.test(w.t)).length/ws.length;
+    const txt=ws.map(w=>w.t).join(' ');
+    const ok=!(mean<55||(ws.length>=4&&real<0.45&&mean<80))&&!/^\W*\d{1,3}\W*$/.test(txt);
+    out.push({para:pi,words:ws,bbox:l.bbox,ok,mean});
+  })}));
+  return out;
+}
+// Ricompone il testo da un insieme di righe: paragrafi, parole a capo riunite, simboli spuri tolti.
+function composeOcr(lines){
+  const groups=[];lines.forEach(l=>{const g=groups[groups.length-1];if(g&&g.para===l.para)g.lines.push(l);else groups.push({para:l.para,lines:[l]})});
+  const out=[];let dubbi=0;
+  groups.forEach(g=>{
+    const tk=[];g.lines.forEach(l=>{l.words.forEach(w=>tk.push(w));tk.push({br:1})});
+    const res=[];
+    for(let i=0;i<tk.length;i++){
+      const x=tk[i];if(x.br)continue;
+      if(/^[|¦_~^`•·]+$/.test(x.t))continue;                       // simboli spuri
+      const prev=res[res.length-1],nextBr=tk[i+1]&&tk[i+1].br;
+      if(prev&&prev.join){prev.t=prev.t.replace(/[-‐]$/,'')+x.t;prev.c=Math.min(prev.c,x.c);prev.join=nextBr&&/\p{L}-$/u.test(prev.t)?1:0;continue}
+      if(prev&&/^[,.;:!?)»\]]+$/.test(x.t)){prev.t+=x.t;continue}     // punteggiatura attaccata
+      const it={t:x.t,c:x.c};
+      if(nextBr&&/\p{L}[-‐]$/u.test(x.t)&&tk[i+2]&&!tk[i+2].br&&/^\p{Ll}/u.test(tk[i+2].t))it.join=1; // pa- / rola
+      res.push(it);
+    }
+    while(res.length&&res[0].c<40)res.shift();while(res.length&&res[res.length-1].c<40)res.pop(); // frammenti di bordo
+    if(res.length&&res.reduce((a,r)=>a+r.c,0)/res.length<45)return;   // rumore, macchie, bordi: scartato
+    const plain=res.map(r=>r.t).join(' ').replace(/([(«\[]) /g,'$1');
+    if(!plain.trim()||/^\d{1,3}$/.test(plain.trim()))return;          // vuoto o numero di pagina
+    const html=res.map(r=>{const e=esc(r.t);if(r.c<DUB_CONF&&/[\p{L}\d]/u.test(r.t)){dubbi++;return`<span class="ocr-dubbio" title="Parola incerta (${Math.round(r.c)}%)">${e}</span>`}return e}).join(' ').replace(/([(«\[]) /g,'$1');
+    out.push({plain,html});
+  });
+  return{text:out.map(o=>o.plain).join('\n'),html:out.map(o=>`<div>${o.html}</div>`).join(''),dubbi};
+}
+function buildOcr(data){
+  const lines=extractLines(data);
+  if(!lines.length){const t=cleanText(data.text||'');return{text:t,html:toHtml(t),dubbi:0}}
+  return composeOcr(lines.filter(l=>l.ok));
+}
+function cleanText(t){return t.replace(/(\p{L})-\n(\p{Ll})/gu,'$1$2').replace(/[|¦]/g,'').replace(/[ \t]+([,.;:!?])/g,'$1').replace(/[ \t]{2,}/g,' ').trim()}
+async function ocrImage(src,onProg,opt={}){
+  const w=await getWorker();const orig=await toCanvas(src);let c=capCanvas(orig,3200);
+  if(opt.clean!==false&&$('#cleanImg').checked)c=preprocess(c);
+  ocrProg=onProg;
+  try{
+    const{data}=await w.recognize(c,{rotateAuto:true});
+    if(opt.lines){const k=orig.width/c.width;return extractLines(data).map(l=>({...l,bbox:{x0:l.bbox.x0*k,y0:l.bbox.y0*k,x1:l.bbox.x1*k,y1:l.bbox.y1*k}}))}
+    const r=buildOcr(data);return opt.full?r:r.text;
+  }finally{ocrProg=null}
+}
+
+async function renderForOcr(n,scale=2){const p=S.pages[n-1];const pg=await p.doc.getPage(p.num);const vp=pg.getViewport({scale});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;return c}
+function lockOcr(on){ocrBusy=on;['#ocrAll','#ocrArea'].forEach(s=>$(s).disabled=on&&S.mode!=='area');$$('[data-act=ocr]').forEach(b=>b.disabled=on)}
+async function runOCR(n,silent){
+  if(ocrBusy&&!silent)return;if(!silent)lockOcr(true);
+  try{
+    setStatus(`OCR pagina ${n}…`,true);
+    const c=await renderForOcr(n);
+    const r=await ocrImage(c,pr=>setStatus(`OCR pagina ${n}: ${Math.round(pr*100)}%`,true),{full:true});
+    if(r.text){edAppend(`<div class="sec">— OCR pagina ${n} —</div>${r.html}<br>`);updateDub();setStatus(`OCR completato · pagina ${n}`+(r.dubbi?` · ${r.dubbi} parol${r.dubbi===1?'a':'e'} da controllare`:''))}
+    else setStatus(`OCR pagina ${n}: nessun testo rilevato`);
+  }catch(err){console.error(err);setStatus('Errore OCR: '+err.message)}
+  finally{if(!silent)lockOcr(false)}
+}
+$('#ocrAll').onclick=async()=>{
+  if(ocrBusy||!S.pages.length)return;
+  const todo=S.pages.map((p,i)=>p.scanned?i+1:0).filter(Boolean);
+  const list=todo.length?todo:S.pages.map((_,i)=>i+1);
+  lockOcr(true);
+  for(const n of list){await runOCR(n,true)}
+  lockOcr(false);setStatus(todo.length?`OCR completato · ${todo.length} pagine scansionate`:'OCR completato per tutte le pagine');
+};
+async function runOCROnArea(n,a){
+  if(ocrBusy)return;lockOcr(true);
+  try{
+    setStatus('OCR area selezionata…',true);
+    const k=3, full=await renderForOcr(n,k);
+    const c=document.createElement('canvas');c.width=Math.round(a.w*k);c.height=Math.round(a.h*k);
+    c.getContext('2d').drawImage(full,a.x*k,a.y*k,a.w*k,a.h*k,0,0,c.width,c.height);
+    const r=await ocrImage(c,pr=>setStatus(`OCR area: ${Math.round(pr*100)}%`,true),{full:true});
+    if(r.text){edAppend(`<div class="sec">— OCR area · pag. ${n} —</div>${r.html}<br>`);updateDub();setStatus('✅ OCR area completato'+(r.dubbi?` · ${r.dubbi} parol${r.dubbi===1?'a':'e'} da controllare`:''))}
+    else setStatus('OCR: nessun testo rilevato. Prova con un’area più grande o più nitida.');
+  }catch(err){console.error(err);setStatus('Errore OCR: '+err.message)}
+  finally{lockOcr(false)}
+}
+
+/* ───────── scanner a tutto schermo: scatto → ritaglio → righe da scegliere ───────── */
+const cam={stream:null,facing:'environment',canvas:null,cropCanvas:null,crop:{x:0,y:0,w:1,h:1},lines:[],sel:[],res:null,dest:'editor',stage:'live'};
+const scEl={ov:$('#camOv'),video:$('#camVideo'),guide:$('#scGuide'),photo:$('#scPhoto'),img:$('#camImg'),crop:$('#scCrop'),lines:$('#scLines'),
+  err:$('#camErr'),proc:$('#camProc'),procTxt:$('#camProcTxt'),title:$('#scTitle'),live:$('#scBarLive'),cropBar:$('#scBarCrop'),sel:$('#scBarSel')};
+function scStage(st){
+  cam.stage=st;
+  const live=st==='live';
+  scEl.video.hidden=!live||!cam.stream;scEl.guide.hidden=!live||!cam.stream;
+  scEl.photo.hidden=live;scEl.crop.hidden=st!=='crop';scEl.lines.hidden=st!=='select';
+  scEl.live.hidden=!live;scEl.cropBar.hidden=st!=='crop';scEl.sel.hidden=st!=='select';
+  scEl.proc.hidden=st!=='proc';if(!live)scEl.err.hidden=true;
+  scEl.title.textContent={live:'Inquadra il testo',crop:'Scegli la parte da leggere',proc:'Riconoscimento…',select:'Tocca le righe da tenere'}[st]||'';
+}
+function openCam(){
+  scEl.ov.hidden=false;document.body.style.overflow='hidden';
+  cam.canvas=cam.cropCanvas=null;cam.res=null;setDest(cam.dest);scStage('live');startCam();
+  getWorker().then(()=>setStatus('OCR pronto')).catch(()=>{});
+}
+async function startCam(){
+  stopCam();scEl.err.hidden=true;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){camError('La fotocamera diretta non è disponibile qui.');return}
+  try{
+    cam.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cam.facing,width:{ideal:2560},height:{ideal:1920}}});
+    scEl.video.srcObject=cam.stream;$('#camShoot').disabled=false;$('#camSwitch').disabled=false;
+    if(cam.stage==='live')scStage('live');
+  }catch(err){
+    camError(err.name==='NotAllowedError'?'Permesso fotocamera negato (puoi abilitarlo nelle impostazioni del browser).':err.name==='NotFoundError'?'Nessuna fotocamera trovata.':'Fotocamera non disponibile.');
+  }
+}
+function camError(m){$('#camErrTxt').textContent=m+' Puoi scattare o scegliere una foto:';scEl.err.hidden=false;scEl.video.hidden=true;scEl.guide.hidden=true;$('#camShoot').disabled=true;$('#camSwitch').disabled=true}
+function stopCam(){if(cam.stream){cam.stream.getTracks().forEach(t=>t.stop());cam.stream=null}}
+function closeCam(){stopCam();scEl.ov.hidden=true;document.body.style.overflow=''}
+function grabFrame(){const v=scEl.video;if(!v.videoWidth)return null;let w=v.videoWidth,h=v.videoHeight;const k=Math.min(1,2400/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(v,0,0,w,h);return c}
+function camMsg(m,err){const e=$('#camMsg');e.textContent=m||'';e.classList.toggle('err',!!err)}
+
+// mostra un'immagine adattata allo spazio disponibile (crop e righe usano coordinate in %)
+function showImage(canvas){
+  return new Promise(res=>{scEl.img.onload=()=>{fitPhoto();res()};scEl.img.src=canvas.toDataURL('image/jpeg',.9);scEl.img.dataset.w=canvas.width;scEl.img.dataset.h=canvas.height});
+}
+function fitPhoto(){
+  if(scEl.photo.hidden&&cam.stage==='live')return;
+  const st=$('#scStage').getBoundingClientRect(),iw=+scEl.img.dataset.w||1,ih=+scEl.img.dataset.h||1;
+  const k=Math.min((st.width-24)/iw,(st.height-24)/ih);
+  scEl.photo.style.width=Math.max(50,iw*k)+'px';scEl.photo.style.height=Math.max(50,ih*k)+'px';
+}
+window.addEventListener('resize',()=>{if(!scEl.ov.hidden)fitPhoto()});
+async function setPhoto(canvas){
+  stopCam();cam.canvas=canvas;cam.crop={x:0,y:0,w:1,h:1};
+  scStage('crop');await showImage(canvas);drawCrop();
+}
+function drawCrop(){const c=cam.crop;Object.assign(scEl.crop.style,{left:c.x*100+'%',top:c.y*100+'%',width:c.w*100+'%',height:c.h*100+'%'})}
+// trascina gli angoli o sposta il riquadro
+(()=>{
+  let drag=null;
+  scEl.crop.addEventListener('pointerdown',e=>{
+    e.preventDefault();scEl.crop.setPointerCapture(e.pointerId);
+    drag={h:e.target.dataset.h||'move',x:e.clientX,y:e.clientY,c:{...cam.crop},r:scEl.photo.getBoundingClientRect()};
+  });
+  scEl.crop.addEventListener('pointermove',e=>{
+    if(!drag)return;const dx=(e.clientX-drag.x)/drag.r.width,dy=(e.clientY-drag.y)/drag.r.height,o=drag.c,M=.08;let{x,y,w,h}=o;
+    if(drag.h==='move'){x=Math.min(1-w,Math.max(0,o.x+dx));y=Math.min(1-h,Math.max(0,o.y+dy))}
+    else{
+      if(drag.h.includes('w')){x=Math.min(o.x+o.w-M,Math.max(0,o.x+dx));w=o.x+o.w-x}
+      if(drag.h.includes('e')){w=Math.min(1-o.x,Math.max(M,o.w+dx))}
+      if(drag.h.includes('n')){y=Math.min(o.y+o.h-M,Math.max(0,o.y+dy));h=o.y+o.h-y}
+      if(drag.h.includes('s')){h=Math.min(1-o.y,Math.max(M,o.h+dy))}
+    }
+    cam.crop={x,y,w,h};drawCrop();
+  });
+  const end=()=>drag=null;scEl.crop.addEventListener('pointerup',end);scEl.crop.addEventListener('pointercancel',end);
+})();
+function rotatePhoto(){
+  const s=cam.canvas,c=document.createElement('canvas');c.width=s.height;c.height=s.width;const x=c.getContext('2d');
+  x.translate(c.width,0);x.rotate(Math.PI/2);x.drawImage(s,0,0);setPhoto(c);
+}
+async function readCrop(){
+  const s=cam.canvas,c=cam.crop,px={x:Math.round(c.x*s.width),y:Math.round(c.y*s.height),w:Math.max(20,Math.round(c.w*s.width)),h:Math.max(20,Math.round(c.h*s.height))};
+  const cc=document.createElement('canvas');cc.width=px.w;cc.height=px.h;cc.getContext('2d').drawImage(s,px.x,px.y,px.w,px.h,0,0,px.w,px.h);
+  cam.cropCanvas=cc;await showImage(cc);scStage('proc');
+  scEl.procTxt.textContent=worker?'Riconoscimento testo…':'Preparo il riconoscimento (solo la prima volta)…';
+  const t0=performance.now();
+  try{
+    const all=await ocrImage(cc,p=>scEl.procTxt.textContent=`Riconoscimento testo… ${Math.round(p*100)}%`,{lines:true});
+    cam.lines=all.filter(l=>l.ok);cam.sel=cam.lines.map(()=>true);
+    scStage('select');drawLines();updateSel();
+    const secs=Math.max(1,Math.round((performance.now()-t0)/1000));
+    if(!cam.lines.length)camMsg('Nessun testo trovato. Inquadra solo il testo, con più luce e il telefono parallelo alla pagina, poi premi Riprova.',true);
+    else camMsg(`✓ ${cam.lines.length} righe riconosciute in ${secs} s · tocca o trascina per togliere quelle che non ti servono`);
+  }catch(err){scStage('select');cam.lines=[];cam.sel=[];drawLines();updateSel();camMsg('⚠️ Errore nel riconoscimento: '+err.message,true)}
+}
+function drawLines(){
+  const W=cam.cropCanvas.width,H=cam.cropCanvas.height;
+  scEl.lines.innerHTML=cam.lines.map((l,i)=>{const b=l.bbox,p=Math.max(6,(l.bbox.y1-l.bbox.y0)*.25);return`<div class="ln" data-i="${i}" style="left:${(b.x0-p)/W*100}%;top:${(b.y0-p)/H*100}%;width:${(b.x1-b.x0+2*p)/W*100}%;height:${(b.y1-b.y0+2*p)/H*100}%"></div>`}).join('');
+}
+function updateSel(){
+  scEl.lines.querySelectorAll('.ln').forEach(el=>el.classList.toggle('off',!cam.sel[+el.dataset.i]));
+  const chosen=cam.lines.filter((_,i)=>cam.sel[i]);
+  cam.res=composeOcr(chosen);$('#camText').value=cam.res.text;
+  const n=chosen.length;$('#camOk').disabled=!n&&cam.dest!=='page';
+  $('#camOk').innerHTML=`${ic('check')} Inserisci${n?` (${n} rig${n===1?'a':'he'})`:''}`;
+  $('#scDub').textContent=cam.res.dubbi?`${cam.res.dubbi} parol${cam.res.dubbi===1?'a':'e'} da controllare (in arancione nell’editor)`:'';
+}
+// tocca una riga per toglierla/rimetterla; trascinando si applica la stessa scelta alle altre
+(()=>{
+  let mode=null;
+  const at=e=>{const el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.classList&&el.classList.contains('ln')?+el.dataset.i:-1};
+  scEl.lines.addEventListener('pointerdown',e=>{const i=at(e);if(i<0)return;e.preventDefault();scEl.lines.setPointerCapture(e.pointerId);mode=!cam.sel[i];cam.sel[i]=mode;updateSel()});
+  scEl.lines.addEventListener('pointermove',e=>{if(mode===null)return;const i=at(e);if(i>=0&&cam.sel[i]!==mode){cam.sel[i]=mode;updateSel()}});
+  const end=()=>mode=null;scEl.lines.addEventListener('pointerup',end);scEl.lines.addEventListener('pointercancel',end);
+})();
+function setDest(d){cam.dest=d;$$('#scDest button').forEach(b=>b.classList.toggle('on',b.dataset.dest===d));if(cam.lines)updateSelSafe()}
+function updateSelSafe(){if(cam.stage==='select')updateSel()}
+$('#scanBtn').onclick=openCam;$('#scanBtn2').onclick=openCam;$('#camClose').onclick=closeCam;
+$('#camSwitch').onclick=()=>{cam.facing=cam.facing==='environment'?'user':'environment';startCam()};
+$('#camShoot').onclick=()=>{const f=grabFrame();if(f)setPhoto(f);else toast('Fotocamera non ancora pronta')};
+$$('.photoIn').forEach(inp=>inp.onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{setPhoto(await toCanvas(await loadPhoto(f)))}catch(err){toast('⚠️ '+err.message)}});
+$('#scRotate').onclick=rotatePhoto;
+$('#scFull').onclick=()=>{cam.crop={x:0,y:0,w:1,h:1};drawCrop()};
+$('#scRead').onclick=readCrop;
+$('#scAll').onclick=()=>{cam.sel=cam.lines.map(()=>true);updateSel()};
+$('#scNone').onclick=()=>{cam.sel=cam.lines.map(()=>false);updateSel()};
+$$('#scDest button').forEach(b=>b.onclick=()=>setDest(b.dataset.dest));
+$$('.scRetry').forEach(b=>b.onclick=()=>{scStage('live');startCam()});
+$('#scBack').onclick=()=>{scStage('crop');showImage(cam.canvas).then(drawCrop)};
+$('#camOk').onclick=async()=>{
+  const t=$('#camText').value.trim(),r=cam.res||{text:'',html:''};
+  const body=(r.text.trim()===t)?r.html:`<div>${toHtml(t)}</div>`;
+  if(cam.dest==='page'&&cam.cropCanvas){
+    const n=await addImagePage(cam.cropCanvas.toDataURL('image/jpeg',.9),'scansione');
+    if(t)edAppend(`<div class="sec">— Pagina scansionata ${n} —</div>${body}<br>`);
+    setStatus(`Foto aggiunta come pagina ${n}`+(t?' · testo nell’editor':''));
+  }else{
+    if(!t){toast('Nessuna riga scelta');return}
+    edAppend(`<div class="sec">— Testo scansionato —</div>${body}<br>`);setStatus('Testo scansionato aggiunto all’editor');
+  }
+  cam.res=null;updateDub();closeCam();
+};
+
+/* ───────── esportazioni del PDF annotato ───────── */
+async function composePage(n,k=2){
+  const p=S.pages[n-1];const c=await renderForOcr(n,k);const ctx=c.getContext('2d');
+  S.highlights.filter(h=>h.page===n).forEach(h=>{
+    if(h.className.startsWith('hl-')){ctx.globalAlpha=.45;ctx.fillStyle=(HL.find(x=>'hl-'+x.n===h.className)||HL[0]).c;ctx.fillRect(h.x*k,h.y*k,h.w*k,h.h*k);ctx.globalAlpha=1}
+    else{ctx.strokeStyle=(UL.find(x=>'ul-'+x.n===h.className)||UL[0]).c;ctx.lineWidth=1.5*k;ctx.beginPath();ctx.moveTo(h.x*k,(h.y+h.h)*k);ctx.lineTo((h.x+h.w)*k,(h.y+h.h)*k);ctx.stroke()}
+  });
+  if(S.drawings[n]){const img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=S.drawings[n]});if(img)ctx.drawImage(img,0,0,c.width,c.height)}
+  S.notes.filter(a=>a.page===n&&a.text).forEach(a=>{
+    const[bg,bd]=NOTE_COL[a.color]||NOTE_COL.yellow;const fs=11*k,pad=5*k,maxW=180*k;ctx.font=`${fs}px Arial`;
+    const lines=[];a.text.split('\n').forEach(par=>{let line='';par.split(' ').forEach(w=>{const tst=line?line+' '+w:w;if(ctx.measureText(tst).width>maxW&&line){lines.push(line);line=w}else line=tst});lines.push(line)});
+    const w=Math.min(maxW,Math.max(...lines.map(l=>ctx.measureText(l).width)))+pad*2,h=lines.length*fs*1.3+pad*2,x=a.x*k,y=a.y*k;
+    ctx.fillStyle=bg;ctx.strokeStyle=bd;ctx.lineWidth=k;ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,4*k):ctx.rect(x,y,w,h);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#1f2937';ctx.textBaseline='top';lines.forEach((l,i)=>ctx.fillText(l,x+pad,y+pad+i*fs*1.3));
+  });
+  return {c,w:p.w,h:p.h};
+}
+const baseName=()=>(S.fileName||'documento').replace(/\.pdf$/i,'');
+$('#expPdf').onclick=async()=>{
+  if(!S.pages.length)return;setStatus('Esportazione PDF con annotazioni…',true);
+  try{
+    const{jsPDF}=window.jspdf;let pdf=null;
+    for(let n=1;n<=S.pages.length;n++){
+      setStatus(`Esportazione pagina ${n}/${S.pages.length}…`,true);
+      const{c,w,h}=await composePage(n);const o=w>h?'l':'p';
+      if(!pdf)pdf=new jsPDF({unit:'pt',format:[w,h],orientation:o});else pdf.addPage([w,h],o);
+      pdf.addImage(c.toDataURL('image/jpeg',.9),'JPEG',0,0,w,h);
+    }
+    download(pdf.output('blob'),baseName()+'-annotato.pdf');setStatus('PDF esportato con annotazioni');
+  }catch(err){console.error(err);setStatus('Errore esportazione: '+err.message)}
+};
+$('#expPng').onclick=async()=>{
+  if(!S.pages.length)return;
+  for(let n=1;n<=S.pages.length;n++){setStatus(`PNG pagina ${n}/${S.pages.length}…`,true);const{c}=await composePage(n);const b=await new Promise(r=>c.toBlob(r,'image/png'));download(b,`${baseName()}_pagina_${n}.png`);await sleep(350)}
+  setStatus(`Esportate ${S.pages.length} pagine PNG`);
+};
+
+/* ───────── esportazioni dell'editor ───────── */
+const HL_INLINE={'hl-yellow':'background:#FBBF24','hl-green':'background:#6EE7B7','hl-blue':'background:#93C5FD','hl-pink':'background:#F9A8D4','ul-red':'text-decoration:underline;text-decoration-color:#EF4444','ul-blue':'text-decoration:underline;text-decoration-color:#3B82F6'};
+$('#expWord').onclick=async()=>{
+  if(!editor.innerText.trim()){setStatus('Editor vuoto');toast('L’editor è vuoto');return}
+  setStatus('Esportazione Word…',true);
+  const cl=editor.cloneNode(true);
+  cl.querySelectorAll('span[class]').forEach(s=>{const st=HL_INLINE[s.className];if(st)s.setAttribute('style',st)});
+  cl.querySelectorAll('.ocr-dubbio').forEach(x=>x.replaceWith(...x.childNodes));
+  cl.querySelectorAll('.sec').forEach(s=>s.setAttribute('style','font-size:9pt;color:#1d6b55;font-weight:bold'));
+  const d=S.dsa, font=d.fontFamily==='OpenDyslexic'?'Arial':d.fontFamily;
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:'${font}',Arial,sans-serif;font-size:${Math.round(d.fontSize*.75)}pt;line-height:${d.lineHeight};letter-spacing:${d.letterSpacing}em;word-spacing:${d.wordSpacing}em}div{margin:0 0 6pt}</style></head><body>${cl.innerHTML}</body></html>`;
+  try{
+    await loadScript('https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js');
+    download(window.htmlDocx.asBlob(html),`documento-dsa-${Date.now()}.docx`);
+  }catch(e){ // ripiego: .doc che Word apre comunque
+    download(new Blob(['﻿'+html],{type:'application/msword'}),`documento-dsa-${Date.now()}.doc`);
+  }
+  setStatus('Esportato in Word');
+};
+$('#expEdPdf').onclick=()=>{
+  const text=editor.innerText||'';if(!text.trim()){setStatus('Editor vuoto');toast('L’editor è vuoto');return}
+  const{jsPDF}=window.jspdf, d=S.dsa, dark=d.theme==='dark';
+  const pdf=new jsPDF({unit:'mm',format:'a4'}), M=20, maxW=170, fs=Math.max(11,Math.round(d.fontSize*.7)), lh=fs*.3528*d.lineHeight;
+  const bgPage=()=>{if(dark){pdf.setFillColor(31,41,55);pdf.rect(0,0,210,297,'F');pdf.setTextColor(243,244,246)}else pdf.setTextColor(20,20,20)};
+  pdf.setFont('helvetica','normal');pdf.setFontSize(fs);bgPage();let y=M+fs*.35;
+  text.split('\n').forEach(line=>{
+    if(!line.trim()){y+=lh/2;return}
+    pdf.splitTextToSize(line,maxW).forEach(sl=>{if(y>297-M){pdf.addPage();bgPage();y=M+fs*.35}pdf.text(sl,M,y);y+=lh});
+  });
+  download(pdf.output('blob'),`documento-dsa-${Date.now()}.pdf`);setStatus('Esportato in PDF');
+};
+
+/* ───────── salvataggi (compatibili con la web app originale) ───────── */
+function snapshot(){return{editorContent:editor.innerHTML,drawings:S.drawings,viewerHighlights:S.highlights,textAnnotations:S.notes.map(a=>({...a,isNew:false}))}}
+function restore(d){
+  if(d.editorContent!=null)editor.innerHTML=d.editorContent;
+  S.drawings=d.drawings||{};S.highlights=d.viewerHighlights||[];S.notes=(d.textAnnotations||[]).map(a=>({...a,isNew:false}));
+  if(S.pages.length)renderPages();
+  updateDub();
+}
+function renderSaved(){
+  $('#savedList').innerHTML=S.saved.slice(-5).reverse().map(a=>`<span class="chip"><button data-load="${a.id}" title="Carica">${esc((a.name||'Documento').slice(0,22))}<small>${esc(a.date||'')}</small></button><button data-del="${a.id}" title="Elimina">${ic('x')}</button></span>`).join('');
+}
+$('#savedList').onclick=e=>{
+  const l=e.target.closest('[data-load]'),d=e.target.closest('[data-del]');
+  if(l){const a=S.saved.find(x=>x.id===l.dataset.load);if(a){restore(a);setStatus(`Annotazioni “${a.name}” caricate`)}}
+  if(d){S.saved=S.saved.filter(x=>x.id!==d.dataset.del);store.set(STORAGE_KEY,S.saved);renderSaved()}
+};
+$('#saveAnn').onclick=()=>{
+  const data={id:Date.now().toString(),name:S.fileName||'Documento',date:new Date().toLocaleDateString('it-IT'),...snapshot(),timestamp:Date.now()};
+  S.saved.push(data);
+  if(store.set(STORAGE_KEY,S.saved)){renderSaved();setStatus('Annotazioni salvate in questo browser')}
+  else{S.saved.pop();setStatus('Spazio del browser pieno · usa “File” per salvare su disco');toast('Spazio pieno: salva con il pulsante “File”')}
+};
+$('#expJson').onclick=()=>{download(new Blob([JSON.stringify({...snapshot(),exportDate:new Date().toISOString()},null,2)],{type:'application/json'}),`annotazioni-${baseName()}.json`);setStatus('Annotazioni esportate in un file')};
+$('#jsonIn').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{try{restore(JSON.parse(r.result));setStatus('Annotazioni importate')}catch(err){setStatus('File di annotazioni non valido')}};r.readAsText(f)};
+renderSaved();
+
+/* ───────── impostazioni DSA ───────── */
+const THEMES={light:['#ffffff','#1F2937','Chiaro'],cream:['#FDFBF7','#1F2937','Crema'],sepia:['#F5E6D3','#5D4037','Seppia'],mint:['#E8F5E9','#1B5E20','Menta'],dark:['#1F2937','#F3F4F6','Scuro']};
+$('#sThemes').innerHTML=Object.entries(THEMES).map(([k,[bg,fg,l]])=>`<button data-t="${k}" style="background:${bg};color:${fg}">${l}</button>`).join('');
+function applyDsa(){
+  const d=S.dsa,[bg,fg]=THEMES[d.theme]||THEMES.cream;
+  const st={fontFamily:`'${d.fontFamily}',sans-serif`,fontSize:d.fontSize+'px',lineHeight:d.lineHeight,letterSpacing:d.letterSpacing+'em',wordSpacing:d.wordSpacing+'em',background:bg,color:fg};
+  Object.assign(editor.style,st);Object.assign($('#sPrev').style,st);
+  $('#sFont').value=d.fontFamily;$('#sSize').value=d.fontSize;$('#sLine').value=d.lineHeight;$('#sLet').value=d.letterSpacing;$('#sWord').value=d.wordSpacing;
+  $('#sSizeV').textContent=d.fontSize+'px';$('#sLineV').textContent=d.lineHeight;$('#sLetV').textContent=d.letterSpacing.toFixed(2);$('#sWordV').textContent=d.wordSpacing.toFixed(2);
+  $$('#sThemes button').forEach(b=>b.classList.toggle('on',b.dataset.t===d.theme));
+  store.set('pdf-dsa-settings',d);
+}
+$('#sFont').onchange=e=>{S.dsa.fontFamily=e.target.value;applyDsa()};
+[['#sSize','fontSize',parseInt],['#sLine','lineHeight',parseFloat],['#sLet','letterSpacing',parseFloat],['#sWord','wordSpacing',parseFloat]].forEach(([s,k,f])=>$(s).oninput=e=>{S.dsa[k]=f(e.target.value);applyDsa()});
+$('#sThemes').onclick=e=>{const b=e.target.closest('button');if(b){S.dsa.theme=b.dataset.t;applyDsa()}};
+$('#dsaBtn').onclick=()=>$('#dsaOv').hidden=false;
+$$('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).hidden=true);
+$$('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o){if(o.id==='camOv')closeCam();else o.hidden=true}}));
+applyDsa();
+
+/* ───────── voci del browser e lingue (IT · FR · DE · EN) ─────────
+   La lingua viene riconosciuta paragrafo per paragrafo (oppure scelta a mano);
+   per ogni lingua si usa la voce migliore disponibile nel browser. */
+const LANGS={it:'Italiano',fr:'Français',de:'Deutsch',en:'English'};
+const PREF_REGION={it:'it-it',fr:'fr-fr',de:'de-de',en:'en-gb'};
+const STOP={
+  it:'e lo gli di che è per non una uno del della sul sulla al ai nei negli tra fra col dei delle degli sono con nel nella nelle alla alle anche come più questo questa questi ma ha hanno perché quando molto essere già dove cosa tutto loro',
+  fr:'suis mon mes ton tes les et est une pas que qui pour dans sur avec ce cette elle nous vous sont au aux je mais très où ça leur était être avoir fait comme tout plus ont sa ses',
+  de:'habe bin bist hast mein meine dein deine der die das und ist nicht ein eine einen ich er sie es wir zu mit auf für den dem von im sind auch wie aber kein keine noch schon oder wenn sich bei nach aus ihr hat haben',
+  en:'i am the and is are of to it that you he she we they this with for not be have has were what my your does can will would there their from which an at by'
+};
+const STOPS={};for(const k in STOP)STOPS[k]=new Set(STOP[k].split(' '));
+function detectLang(t,fallback){
+  const words=t.toLowerCase().match(/[\p{L}’']+/gu)||[];
+  if(words.length<3)return fallback;
+  const sc={it:0,fr:0,de:0,en:0};
+  for(let w of words){w=w.replace(/^(l|d|qu|j|n|s|c|m|t|dell|all|nell|sull|dall|un)['’]/,'');for(const k in STOPS)if(STOPS[k].has(w))sc[k]++}
+  sc.de+=(t.match(/[äöüß]/gi)||[]).length*.6;
+  sc.fr+=(t.match(/[çêâîôûœë]/gi)||[]).length*.6+(t.match(/\b(qu|j|n|c)['’]/gi)||[]).length*.8;
+  sc.it+=(t.match(/\b(gli|dell|nell|dall|sull)['’]?|[ìò]/gi)||[]).length*.5;
+  sc.en+=(t.match(/\b\w+['’](s|t|re|ll|ve)\b/gi)||[]).length*.8;
+  const best=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
+  if(sc[best[0]]<1.5||sc[best[0]]-sc[best[1]]<1)return fallback;
+  return best[0];
+}
+S.tts=Object.assign({lang:'auto',rate:1,voice:{}},store.get('pdf-dsa-tts',{}));
+const saveTts=()=>store.set('pdf-dsa-tts',S.tts);
+let VOICES=[];
+const APPLE_GOOD=/Alice|Federica|Luca|Paola|Amélie|Amelie|Thomas|Audrey|Aurélie|Anna|Helena|Markus|Petra|Yannick|Daniel|Kate|Serena|Samantha|Arthur|Martha|Stephanie|Oliver/i;
+const NOVELTY=/Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Junior|Ralph|Kathy|Fred/;
+function vScore(v,lang){
+  const n=v.name;let s=0;
+  if(/Natural|Online|Neural/i.test(n))s+=4;if(/Google/i.test(n))s+=3;if(/Enhanced|Premium|Siri/i.test(n))s+=3;if(APPLE_GOOD.test(n))s+=2;
+  if(!v.localService)s+=1;if(/Microsoft/i.test(n)&&!/Online|Natural/i.test(n))s-=5;if(NOVELTY.test(n))s-=4;
+  if(lang&&v.lang.replace('_','-').toLowerCase()===PREF_REGION[lang])s+=1;
+  return s;
+}
+const vLang=v=>v.lang.replace('_','-').toLowerCase().slice(0,2);
+function voicesFor(lang){const all=VOICES.filter(v=>vLang(v)===lang).sort((a,b)=>vScore(b,lang)-vScore(a,lang));const good=all.filter(v=>vScore(v,lang)>0);return good.length?good:all}
+function bestVoice(lang){const list=voicesFor(lang);return list.find(v=>v.name===S.tts.voice[lang])||list[0]||null}
+const vLabel=v=>v.name.replace(/^(Microsoft|Google)\s+/,'').replace(/\s*-\s*(Italian|French|German|English).*$/i,'').replace(/Online \(Natural\)/i,'· naturale').replace(/\s*\(.*?\)\s*$/,'').trim()||v.name;
+function fillVoiceSel(){
+  const sel=$('#ttsVoice'),lang=S.tts.lang;
+  if(lang==='auto'){sel.hidden=true;return}
+  const list=voicesFor(lang);sel.innerHTML=list.map(v=>`<option value="${esc(v.name)}">${esc(vLabel(v))}</option>`).join('');
+  const b=bestVoice(lang);if(b)sel.value=b.name;sel.hidden=list.length<2;
+}
+function syncTtsUi(){
+  $$('.ttsLangSel').forEach(s=>s.value=S.tts.lang);$('#ttsRate').value=String(S.tts.rate);
+  $$('#rRate button').forEach(b=>b.classList.toggle('on',+b.dataset.r===S.tts.rate));fillVoiceSel();
+}
+
+/* motore di lettura riutilizzabile (editor e modalità Lettura) */
+const HLAPI=!!(window.CSS&&CSS.highlights&&window.Highlight);
+let activeReader=null;
+function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), skipSec}
+  let st=null;
+  function buildMap(){
+    let text='';const segs=[];const BLOCK=/^(DIV|P|LI|H[1-6]|UL|OL|TR|ARTICLE|SECTION)$/;
+    (function walk(n){for(const c of n.childNodes){
+      if(c.nodeType===3){if(c.nodeValue){segs.push({node:c,start:text.length,len:c.nodeValue.length});text+=c.nodeValue}}
+      else if(c.nodeType===1){if(c.classList.contains('sec')||c.tagName==='BR'){text+='\n';continue}walk(c);if(BLOCK.test(c.tagName))text+='\n'}
+    }})(o.root);
+    // lingua per paragrafo
+    const paras=[];let prev='it';
+    for(const m of text.matchAll(/[^\n]+/g)){const lang=S.tts.lang!=='auto'?S.tts.lang:detectLang(m[0],prev);prev=lang;paras.push({s:m.index,e:m.index+m[0].length,lang})}
+    return{text,segs,paras};
+  }
+  function idxOf(map,node,off){
+    if(node.nodeType===3){const s=map.segs.find(x=>x.node===node);if(s)return s.start+Math.min(off,s.len)}
+    const r=document.createRange();try{r.setStart(node,off)}catch(e){return 0}r.collapse(true);
+    for(const s of map.segs){if(r.comparePoint(s.node,0)>=0)return s.start}
+    return map.text.length;
+  }
+  function dom(map,i){let lo=0,hi=map.segs.length-1,best=null;while(lo<=hi){const m=(lo+hi)>>1,s=map.segs[m];if(s.start<=i){best=s;lo=m+1}else hi=m-1}
+    if(!best)return map.segs[0]?[map.segs[0].node,0]:null;return[best.node,Math.min(i-best.start,best.len)]}
+  function rangeOf(map,a,b){const p=dom(map,a),q=dom(map,b);if(!p||!q)return null;const r=document.createRange();try{r.setStart(p[0],p[1]);r.setEnd(q[0],q[1])}catch(e){return null}return r}
+  function mark(name,r){if(!HLAPI)return;if(r)CSS.highlights.set(name,new Highlight(r));else CSS.highlights.delete(name)}
+  function keepVisible(r){if(!r)return;const sc=o.scroller||o.root,b=r.getBoundingClientRect(),e=sc.getBoundingClientRect();if(!b.height)return;
+    const bottom=Math.min(e.bottom,innerHeight)-(o.bottomPad||30);if(b.top<e.top+30||b.bottom>bottom)sc.scrollTop+=b.top-e.top-(bottom-e.top)/3}
+  const state=()=>o.onState&&o.onState(st?{playing:true,paused:st.paused,lang:st.lang}:{playing:false});
+  function start(range){
+    if(activeReader&&activeReader!==api)activeReader.stop(true);
+    activeReader=api;
+    const map=buildMap();if(!map.text.trim()){toast('Niente da leggere');return false}
+    let a=0,b=map.text.length;
+    if(range&&o.root.contains(range.startContainer)){
+      a=idxOf(map,range.startContainer,range.startOffset);if(!range.collapsed)b=idxOf(map,range.endContainer,range.endOffset);
+      while(a>0&&/[\p{L}\p{N}'’]/u.test(map.text[a-1]))a--;
+      if(a>=map.text.trim().length&&range.collapsed)a=0;
+    }
+    const chunks=[],re=/[^.!?;:\n]+[.!?;:…]*["»”’)]*[ \t]*/g;
+    for(const p of map.paras){
+      if(p.e<=a||p.s>=b)continue;const s0=Math.max(a,p.s),e0=Math.min(b,p.e),part=map.text.slice(s0,e0);let m;re.lastIndex=0;
+      while((m=re.exec(part))){if(m[0].trim())chunks.push({t:m[0],s:s0+m.index,lang:S.tts.lang!=='auto'?S.tts.lang:detectLang(m[0],p.lang)})} // frase per frase, il paragrafo fa da riserva
+    }
+    if(!chunks.length){toast('Niente da leggere da questo punto');return false}
+    speechSynthesis.cancel();
+    st={map,chunks,i:0,paused:false,word:a,lang:chunks[0].lang,boundaryOK:false,timer:null,t0:0,pausedAt:0,pausedFor:0};
+    state();speakNext();return true;
+  }
+  function wordLen(map,i){const m=map.text.slice(i).match(/^[\p{L}\p{N}'’-]+/u);return m?m[0].length:1}
+  function showWord(i,len){if(!st)return;st.word=i;const r=rangeOf(st.map,i,i+(len||wordLen(st.map,i)));mark('tts-word',r);keepVisible(r)}
+  function speakNext(){
+    if(!st)return;if(st.i>=st.chunks.length){stop(false,true);return}
+    const c=st.chunks[st.i++],u=new SpeechSynthesisUtterance(c.t),v=bestVoice(c.lang);
+    if(v){u.voice=v;u.lang=v.lang}else u.lang=PREF_REGION[c.lang];u.rate=S.tts.rate;
+    if(st.lang!==c.lang){st.lang=c.lang;state()}
+    mark('tts-sent',rangeOf(st.map,c.s,c.s+c.t.trimEnd().length));
+    const words=[...c.t.matchAll(/[\p{L}\p{N}'’-]+/gu)].map(w=>({o:c.s+w.index,l:w[0].length,rel:w.index}));
+    if(words[0])showWord(words[0].o,words[0].l);
+    u.onboundary=e=>{if(e.name&&e.name!=='word')return;if(!st)return;st.boundaryOK=true;clearInterval(st.timer);const w=words.find(x=>x.rel>=e.charIndex)||words[words.length-1];if(w)showWord(w.o,w.l)};
+    u.onstart=()=>{ // voci senza eventi di parola (es. Google): avanzamento stimato sul tempo
+      if(!st||st.boundaryOK||words.length<2)return;
+      st.t0=performance.now();st.pausedFor=0;const cps=14.5*u.rate,total=c.t.length;
+      clearInterval(st.timer);st.timer=setInterval(()=>{if(!st||st.paused||st.boundaryOK)return;const pos=Math.min(total,(performance.now()-st.t0-st.pausedFor)/1000*cps);let w=words[0];for(const x of words){if(x.rel<=pos)w=x;else break}if(w&&w.o!==st.word)showWord(w.o,w.l)},90);
+    };
+    u.onend=()=>{if(st){clearInterval(st.timer);speakNext()}};
+    u.onerror=e=>{if(e.error==='interrupted'||e.error==='canceled')return;if(st){clearInterval(st.timer);speakNext()}};
+    speechSynthesis.speak(u);
+  }
+  function stop(silent,done){
+    if(!st)return;const w=st.word,map=st.map;clearInterval(st.timer);st=null;speechSynthesis.cancel();
+    mark('tts-word',null);mark('tts-sent',null);if(activeReader===api)activeReader=null;state();
+    if(o.onStop)o.onStop(done?null:dom(map,w));
+  }
+  function pause(){if(!st)return;if(st.paused){speechSynthesis.resume();st.pausedFor+=performance.now()-st.pausedAt;st.paused=false}else{speechSynthesis.pause();st.pausedAt=performance.now();st.paused=true}state()}
+  function restartHere(){if(!st)return null;const p=dom(st.map,st.word);if(!p)return null;const r=document.createRange();r.setStart(p[0],p[1]);r.collapse(true);return r}
+  const api={start,stop,pause,playing:()=>!!st,paused:()=>!!(st&&st.paused),restartHere};
+  return api;
+}
+const pointRange=(x,y)=>{if(document.caretRangeFromPoint)return document.caretRangeFromPoint(x,y);if(document.caretPositionFromPoint){const p=document.caretPositionFromPoint(x,y);if(!p)return null;const r=document.createRange();r.setStart(p.offsetNode,p.offset);r.collapse(true);return r}return null};
+
+/* barra “Ascolta” dell'editor */
+let edReader=null;
+(()=>{
+  if(!('speechSynthesis' in window))return;
+  $('#ttsBar').hidden=false;
+  const loadV=()=>{VOICES=speechSynthesis.getVoices();fillVoiceSel()};loadV();speechSynthesis.onvoiceschanged=loadV;
+  let caret=null;
+  document.addEventListener('selectionchange',()=>{const s=getSelection();if(s.rangeCount&&editor.contains(s.getRangeAt(0).commonAncestorContainer))caret=s.getRangeAt(0).cloneRange()});
+  $$('#ttsBar button').forEach(b=>b.addEventListener('mousedown',e=>e.preventDefault()));
+  edReader=makeReader({root:editor,scroller:editor,
+    onState:s=>{$('#ttsPause').disabled=!s.playing;$('#ttsStop').disabled=!s.playing;$('#ttsPlay').disabled=s.playing;
+      $('#ttsPause').innerHTML=s.paused?ic('play')+' Riprendi':ic('pause')+' Pausa';
+      const b=$('#ttsBadge');b.hidden=!s.playing;if(s.playing)b.textContent=s.lang.toUpperCase()},
+    onStop:p=>{if(p){const r=document.createRange();r.setStart(p[0],p[1]);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r);caret=r.cloneRange()}else caret=null}});
+  $('#ttsPlay').onclick=()=>edReader.start(caret);
+  $('#ttsPause').onclick=()=>edReader.pause();
+  $('#ttsStop').onclick=()=>edReader.stop();
+  const restart=()=>{if(edReader.playing()){const r=edReader.restartHere();edReader.stop(true);edReader.start(r)}};
+  $('#ttsRate').onchange=e=>{S.tts.rate=+e.target.value;saveTts();syncTtsUi();restart()};
+  $$('.ttsLangSel').forEach(s=>s.onchange=e=>{S.tts.lang=e.target.value;saveTts();syncTtsUi();restart();if(readReader&&readReader.playing()){const r=readReader.restartHere();readReader.stop(true);readReader.start(r)}});
+  $('#ttsVoice').onchange=e=>{S.tts.voice[S.tts.lang]=e.target.value;saveTts();restart()};
+  editor.addEventListener('pointerup',()=>{if(!edReader.playing())return;setTimeout(()=>{const s=getSelection();if(s.rangeCount&&s.isCollapsed&&editor.contains(s.anchorNode)){caret=s.getRangeAt(0).cloneRange();edReader.stop(true);edReader.start(caret)}},20)});
+  editor.addEventListener('input',()=>{if(edReader.playing())edReader.stop()});
+  window.addEventListener('beforeunload',()=>speechSynthesis.cancel());
+  syncTtsUi();
+})();
+
+/* ───────── controllo parole incerte ───────── */
+let dubIdx=-1;
+function updateDub(){const n=editor.querySelectorAll('.ocr-dubbio').length;$('#checkBar').hidden=!n;$('#checkTxt').textContent=`⚠ ${n} parol${n===1?'a':'e'} incert${n===1?'a':'e'} dell’OCR da controllare`}
+function unwrap(el){el.replaceWith(...el.childNodes);editor.normalize()}
+$('#nextDub').onclick=()=>{
+  const all=[...editor.querySelectorAll('.ocr-dubbio')];if(!all.length)return updateDub();
+  editor.querySelectorAll('.ocr-dubbio.cur').forEach(x=>x.classList.remove('cur'));
+  dubIdx=(dubIdx+1)%all.length;const el=all[dubIdx];el.classList.add('cur');el.scrollIntoView({block:'center',behavior:'smooth'});
+  const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);editor.focus({preventScroll:true});
+};
+$('#okDub').onclick=()=>{
+  const cur=editor.querySelector('.ocr-dubbio.cur')||(()=>{const s=getSelection();const n=s.rangeCount&&s.getRangeAt(0).startContainer;return n&&(n.nodeType===1?n:n.parentElement).closest('.ocr-dubbio')})();
+  if(!cur){toast('Premi “Prossima” per selezionare una parola');return}
+  unwrap(cur);dubIdx--;updateDub();if(editor.querySelector('.ocr-dubbio'))$('#nextDub').click();
+};
+$('#clearDub').onclick=()=>{editor.querySelectorAll('.ocr-dubbio').forEach(unwrap);updateDub()};
+// correggendo la parola a mano, il segno sparisce
+editor.addEventListener('input',()=>{const s=getSelection();if(s.rangeCount){const n=s.getRangeAt(0).startContainer,el=n&&(n.nodeType===1?n:n.parentElement).closest('.ocr-dubbio');if(el)unwrap(el)}updateDub()});
+const _clearEd=$('#clearEd').onclick;$('#clearEd').onclick=()=>{_clearEd();updateDub()};
+
+/* ───────── correzione con l'IA (Copilot / Claude), gratuita via copia-incolla ───────── */
+const AI_PROMPT=`Questo testo è stato estratto con l'OCR da una pagina di libro e contiene errori di riconoscimento.
+Correggi SOLO gli errori dell'OCR: lettere scambiate (es. "rn" letto al posto di "m", "l" al posto di "1"), parole spezzate o unite per sbaglio, accenti persi, simboli estranei, a capo nel mezzo delle frasi.
+NON riformulare, NON semplificare, NON riassumere, NON cambiare parole già corrette, la punteggiatura o l'ordine delle frasi.
+Mantieni i paragrafi. Lascia invariate le righe che iniziano con "—".
+Se una parola è illeggibile scrivi [?].
+Rispondi solo con il testo corretto, senza commenti.
+
+TESTO:
+`;
+let aiRange=null;
+function editorPlain(node){
+  const c=node.cloneNode(true);c.querySelectorAll('br').forEach(b=>b.replaceWith('\n'));
+  return [...c.childNodes].map(n=>n.nodeType===3?n.textContent:n.textContent+'\n').join('').replace(/\n{3,}/g,'\n\n').trim();
+}
+$('#aiBtn').onclick=()=>{
+  if(!editor.innerText.trim()){toast('L’editor è vuoto');return}
+  const s=getSelection();aiRange=null;
+  if(s.rangeCount&&s.toString().trim().split(/\s+/).length>=3&&editor.contains(s.getRangeAt(0).commonAncestorContainer))aiRange=s.getRangeAt(0).cloneRange();
+  $('#aiScope').innerHTML=aiRange?'Verrà corretto <b>solo il testo selezionato</b> nell’editor.':'Verrà corretto <b>tutto il testo</b> dell’editor. Per correggerne solo una parte, selezionala prima di premere il pulsante.';
+  $('#aiPrompt').textContent=AI_PROMPT+'…';$('#aiPaste').value='';$('#aiOv').hidden=false;
+};
+function aiText(){if(aiRange){const d=document.createElement('div');d.appendChild(aiRange.cloneContents());return editorPlain(d)}return editorPlain(editor)}
+$('#aiCopy').onclick=async()=>{
+  const txt=AI_PROMPT+aiText();let ok=false;
+  try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
+  if(!ok){const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();try{ok=document.execCommand('copy')}catch(e){}ta.remove()}
+  toast(ok?'Copiato! Ora incollalo in Copilot o Claude':'Copia non riuscita: seleziona il testo dall’editor e copialo a mano');
+};
+$('#aiApply').onclick=()=>{
+  const t=$('#aiPaste').value.replace(/^```\w*\n?|```$/g,'').trim();if(!t){toast('Incolla prima il testo corretto');return}
+  const html=t.split(/\n/).map(l=>l.trim()?(/^—/.test(l.trim())?`<div class="sec">${esc(l.trim())}</div>`:`<div>${esc(l)}</div>`):'<br>').join('');
+  if(aiRange&&editor.contains(aiRange.commonAncestorContainer)){aiRange.deleteContents();const f=aiRange.createContextualFragment(html);aiRange.insertNode(f);editor.normalize()}
+  else editor.innerHTML=html;
+  aiRange=null;$('#aiOv').hidden=true;updateDub();setStatus('Testo corretto inserito nell’editor');
+};
+
+/* ───────── modalità Lettura: solo il testo, a tutto schermo, con i comandi ─────────
+   ▶︎/⏸, ⏹, velocità, lingua; tocca una parola per partire da lì.
+   Il resto dell'app viene nascosto anche alla voce dell'iPad (Controller lettura). */
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let readSize=0,readReader=null,readResume=null;
+function readStyle(){
+  const d=S.dsa,[bg,fg]=THEMES[d.theme]||THEMES.cream,fs=d.fontSize+4+readSize;
+  Object.assign($('#readOv').style,{background:bg,color:fg});
+  Object.assign($('#readTxt').style,{fontFamily:`'${d.fontFamily}',sans-serif`,fontSize:fs+'px',lineHeight:d.lineHeight,letterSpacing:d.letterSpacing+'em',wordSpacing:d.wordSpacing+'em'});
+}
+function readUi(s){
+  const p=$('#rPlay');
+  if(!s.playing)p.innerHTML=ic('play')+'<span>Leggi</span>';
+  else p.innerHTML=s.paused?ic('play')+'<span>Riprendi</span>':ic('pause')+'<span>Pausa</span>';
+  p.classList.toggle('on',s.playing&&!s.paused);$('#rStop').disabled=!s.playing;
+  const b=$('#rBadge');b.hidden=!s.playing;if(s.playing){b.textContent=s.lang.toUpperCase();b.title=LANGS[s.lang]}
+}
+if('speechSynthesis' in window){
+  readReader=makeReader({root:$('#readTxt'),scroller:$('#readOv'),bottomPad:110,onState:readUi,
+    onStop:p=>{if(p){const r=document.createRange();r.setStart(p[0],p[1]);r.collapse(true);readResume=r}else readResume=null}});
+}else{$('#rPlay').hidden=true;$('#rStop').hidden=true;$('#rRate').hidden=true}
+function openReading(){
+  if(!editor.innerText.trim()){toast('L’editor è vuoto: importa o scansiona prima un testo');return}
+  if(edReader)edReader.stop(true);
+  const c=editor.cloneNode(true);
+  c.querySelectorAll('.ocr-dubbio').forEach(x=>x.replaceWith(...x.childNodes));
+  c.querySelectorAll('.sec').forEach(x=>x.remove());
+  $('#readTxt').innerHTML=c.innerHTML;readStyle();readResume=null;syncTtsUi();
+  ['.top','.main','#dsaOv','#camOv','#aiOv'].forEach(q=>{const e=$(q);e.setAttribute('aria-hidden','true');e.inert=true});
+  $('#readOv').hidden=false;$('#readOv').scrollTop=0;document.body.style.overflow='hidden';
+  toast(readReader?'Premi Leggi o tocca una parola per partire da lì':'Usa il Controller lettura dell’iPad');
+}
+function closeReading(){
+  if(readReader)readReader.stop(true);
+  $('#readOv').hidden=true;document.body.style.overflow='';
+  ['.top','.main','#dsaOv','#camOv','#aiOv'].forEach(q=>{const e=$(q);e.removeAttribute('aria-hidden');e.inert=false});
+}
+$('#readBtn').onclick=openReading;$('#readClose').onclick=closeReading;
+$('#readPlus').onclick=()=>{readSize=Math.min(16,readSize+2);readStyle()};
+$('#readMinus').onclick=()=>{readSize=Math.max(-6,readSize-2);readStyle()};
+$('#rPlay').onclick=()=>{if(!readReader)return;if(readReader.playing())readReader.pause();else readReader.start(readResume)};
+$('#rStop').onclick=()=>{if(readReader)readReader.stop()};
+$$('#rRate button').forEach(b=>b.onclick=()=>{S.tts.rate=+b.dataset.r;saveTts();syncTtsUi();if(readReader&&readReader.playing()){const r=readReader.restartHere();readReader.stop(true);readReader.start(r)}});
+// tocco su una parola: la lettura parte (o salta) da lì. Una selezione lunga resta per “Leggi selezione” dell'iPad.
+$('#readTxt').addEventListener('click',e=>{
+  if(!readReader)return;const s=getSelection();if(s&&!s.isCollapsed&&s.toString().trim())return;
+  const r=pointRange(e.clientX,e.clientY);if(!r||!$('#readTxt').contains(r.startContainer))return;
+  readReader.stop(true);readReader.start(r);
+});
+document.addEventListener('keydown',e=>{
+  if($('#readOv').hidden)return;
+  if(e.key==='Escape'){e.stopPropagation();closeReading()}
+  else if(e.key===' '&&e.target===document.body){e.preventDefault();$('#rPlay').click()}
+},true);
+
+readUi({playing:false});
+$$('.ocrLangSel').forEach(sl=>{sl.value=S.ocrLang;sl.onchange=e=>setOcrLang(e.target.value)});
+updateChrome();
+if(!window.pdfjsLib){setStatus('⚠️ Serve una connessione internet per caricare il lettore PDF')}
+</script>
+</body>
+</html>

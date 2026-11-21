@@ -2,7 +2,9 @@
 
 App web per allievi con DSA: apri un PDF o una foto, evidenzia e annota, leggi il testo con l'OCR, ascoltalo e correggilo.
 
-**Apri l'app:** https://lk-66.github.io/pdf-dsa-dash/
+**Apri l'app:**
+- Versione 1 (stabile): https://lk-66.github.io/pdf-dsa-dash/
+- Versione 2 (nuova): https://lk-66.github.io/pdf-dsa-dash/v2/
 
 ## Funzioni
 - Viewer PDF con zoom, evidenziatore (4 colori), sottolineatura, penna, evidenziatore a mano libera e note
@@ -15,3 +17,10 @@ App web per allievi con DSA: apri un PDF o una foto, evidenzia e annota, leggi i
 ## Uso su iPad / iPhone
 Apri il link in **Safari** → Condividi → **Aggiungi alla schermata Home**.
 I testi e le foto restano sul dispositivo: nulla viene caricato su server.
+
+## Novità della versione 2
+- Scanner a tutto schermo: scatto, ritaglio con gli angoli, rotazione
+- Dopo lo scatto le righe riconosciute sono evidenziate: tocca o trascina per scegliere quali inserire
+- OCR in italiano, francese, tedesco, inglese o misto
+- Voci del browser per IT · FR · DE · EN con riconoscimento automatico della lingua frase per frase
+- Modalità Lettura con Play / Pausa / Stop, velocità, lingua e tocco sulla parola per partire da lì
