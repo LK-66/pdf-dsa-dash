@@ -234,6 +234,8 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .sc-tip{font-size:14px;opacity:.75;margin:4px 0 0;text-align:center}
 .sc-apple{width:min(680px,94%);height:100%;display:flex;flex-direction:column;gap:10px;padding:8px 0;user-select:text;-webkit-user-select:text}
 .sc-apple textarea,.sc-sheet textarea{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default} /* iPad: senza questo il riquadro non si può toccare né scrivere */
+.sc-lead{margin:0;font-size:16px;font-weight:700}
+.sc-apple #applePaste{align-self:flex-start}
 .sc-apple ol{margin:0;padding-left:1.3em;font-size:15px;line-height:1.5}
 .sc-apple textarea{flex:1;min-height:160px;border-radius:12px;border:2px solid #ffd60a;padding:12px;font-size:17px;line-height:1.5;background:#fff;color:#111}
 .sc-err{max-width:420px;text-align:center;padding:20px;display:flex;flex-direction:column;gap:14px;align-items:center}
@@ -460,16 +462,18 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
     <div class="sc-start" id="scStart" hidden>
       <label class="sc-card main"><i data-i="camera"></i><b>Scatta una foto</b><small>Fotocamera del dispositivo, massima qualità</small><input type="file" class="photoIn" accept="image/*" capture="environment"></label>
       <label class="sc-card"><i data-i="image"></i><b>Scegli dalle foto</b><small>Una foto già scattata o salvata</small><input type="file" class="photoIn" accept="image/*"></label>
-      <button class="sc-card apple" id="scApple" hidden><i data-i="scan"></i><b>Testo da fotocamera (Apple)</b><small>Riconoscimento di Apple: molto preciso, raddrizza la pagina da solo</small></button>
+      <button class="sc-card apple" id="scApple" hidden><i data-i="scan"></i><b>Testo da Apple (Fotocamera)</b><small>Copi il testo con «Testo attivo» della Fotocamera e lo incolli qui: molto preciso</small></button>
       <p class="sc-tip">Per un testo preciso: pagina intera con un po' di margine, dispositivo parallelo al foglio, luce uniforme e senza riflessi.</p>
     </div>
     <div class="sc-apple" id="scAppleBox" hidden>
+      <p class="sc-lead">Il riconoscimento di Apple è molto preciso e raddrizza la pagina da solo. Si usa dall'app Fotocamera:</p>
       <ol>
-        <li><b>Tocca il riquadro</b> qui sotto.</li>
-        <li>Tocca di nuovo e scegli <b>«Scansiona testo»</b> (icona con le righe in un riquadro), oppure premi quell'icona sopra la tastiera.</li>
-        <li>Inquadra il testo: si evidenzia in giallo. Premi <b>«Inserisci»</b>. Puoi ripetere per altre parti.</li>
+        <li>Apri l'app <b>Fotocamera</b> e inquadra il testo.</li>
+        <li>Tocca l'icona <b>Testo attivo</b> (righe in un riquadro, in basso a destra), poi <b>«Copia tutto»</b>. Puoi anche selezionare solo una parte e scegliere «Copia».</li>
+        <li>Torna qui e premi <b>«Incolla testo copiato»</b>, poi <b>«Inserisci nell'editor»</b>.</li>
       </ol>
-      <textarea id="appleTxt" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Tocca qui, poi «Scansiona testo»"></textarea>
+      <button class="btn primary sc-big" id="applePaste"><i data-i="copy"></i> Incolla testo copiato</button>
+      <textarea id="appleTxt" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Il testo incollato compare qui: puoi controllarlo e correggerlo."></textarea>
       <div class="row"><button class="btn" id="appleBack">‹ Indietro</button><button class="btn" id="appleClear">Svuota</button><span class="spacer"></span><button class="btn primary" id="appleOk"><i data-i="check"></i> Inserisci nell'editor</button></div>
     </div>
     <div class="sc-err" id="camErr" hidden><p id="camErrTxt"></p>
@@ -1146,7 +1150,7 @@ function scStage(st){
   scEl.live.hidden=!live;scEl.cropBar.hidden=st!=='crop';scEl.sel.hidden=st!=='select';
   scEl.proc.hidden=st!=='proc';if(!live)scEl.err.hidden=true;
   $('#camOv .sc-sel').hidden=st==='apple';
-  scEl.title.textContent={start:'Scansiona testo',apple:'Testo da fotocamera (Apple)',live:'Inquadra il testo',crop:'Scegli la parte da leggere',proc:'Riconoscimento…',select:'Tocca le righe da tenere'}[st]||'';
+  scEl.title.textContent={start:'Scansiona testo',apple:'Testo da Apple (Fotocamera)',live:'Inquadra il testo',crop:'Scegli la parte da leggere',proc:'Riconoscimento…',select:'Tocca le righe da tenere'}[st]||'';
 }
 function openCam(){
   scEl.ov.hidden=false;document.body.style.overflow='hidden';
@@ -1264,6 +1268,13 @@ $$('.scRetry').forEach(b=>b.onclick=()=>{if(TOUCH)scStage('start');else{scStage(
 $('#scApple').hidden=!IS_IOS;
 $('#scApple').onclick=()=>{scStage('apple');if(!IS_IOS)setTimeout(()=>$('#appleTxt').focus(),50)};
 $('#appleBack').onclick=()=>scStage('start');
+$('#applePaste').onclick=async()=>{
+  const ta=$('#appleTxt');
+  try{const t=await navigator.clipboard.readText();
+    if(!t.trim()){toast('Negli appunti non c’è testo: copia prima con «Testo attivo»');return}
+    ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+t.trim();toast('Testo incollato: controllalo e premi «Inserisci»');
+  }catch(e){ta.focus();toast('Tieni premuto nel riquadro e scegli «Incolla»')}
+};
 $('#appleClear').onclick=()=>{$('#appleTxt').value='';$('#appleTxt').focus()};
 $('#appleOk').onclick=()=>{
   const raw=$('#appleTxt').value.trim();if(!raw){toast('Il riquadro è vuoto: usa «Scansiona testo»');return}
