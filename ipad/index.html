@@ -163,7 +163,8 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .edwrap{position:relative;flex:1;min-height:180px;display:flex}
 .edwrap>.editor{flex:1}
 .ttsLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5;mix-blend-mode:multiply} /* il colore si “mescola” col testo: le lettere restano visibili */
-#readOv>.ttsLayer{overflow:visible;bottom:auto;height:0}
+#readOv>.ttsLayer{overflow:visible;bottom:auto;height:0;z-index:0;mix-blend-mode:normal} /* in Lettura il colore sta DIETRO il testo (Safari non fonde i colori nelle finestre a tutto schermo) */
+#readTxt{position:relative;z-index:1}
 .ttsLayer i{position:absolute;border-radius:3px}
 .ttsLayer .s{background:#fff1a8}
 .ttsLayer .w{background:#fbbf24}
