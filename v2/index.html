@@ -232,7 +232,8 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .sc-card.main{background:var(--green);border-color:var(--green)}
 .sc-card.apple{background:rgba(255,214,10,.16);border-color:rgba(255,214,10,.5)}
 .sc-tip{font-size:14px;opacity:.75;margin:4px 0 0;text-align:center}
-.sc-apple{width:min(680px,94%);height:100%;display:flex;flex-direction:column;gap:10px;padding:8px 0}
+.sc-apple{width:min(680px,94%);height:100%;display:flex;flex-direction:column;gap:10px;padding:8px 0;user-select:text;-webkit-user-select:text}
+.sc-apple textarea,.sc-sheet textarea{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default} /* iPad: senza questo il riquadro non si può toccare né scrivere */
 .sc-apple ol{margin:0;padding-left:1.3em;font-size:15px;line-height:1.5}
 .sc-apple textarea{flex:1;min-height:160px;border-radius:12px;border:2px solid #ffd60a;padding:12px;font-size:17px;line-height:1.5;background:#fff;color:#111}
 .sc-err{max-width:420px;text-align:center;padding:20px;display:flex;flex-direction:column;gap:14px;align-items:center}
@@ -1261,7 +1262,7 @@ $$('#scDest button').forEach(b=>b.onclick=()=>setDest(b.dataset.dest));
 $$('.scRetry').forEach(b=>b.onclick=()=>{if(TOUCH)scStage('start');else{scStage('live');startCam()}});
 // riconoscimento di Apple (“Testo attivo”): il sistema scrive il testo direttamente nel riquadro
 $('#scApple').hidden=!IS_IOS;
-$('#scApple').onclick=()=>{scStage('apple');setTimeout(()=>$('#appleTxt').focus(),50)};
+$('#scApple').onclick=()=>{scStage('apple');if(!IS_IOS)setTimeout(()=>$('#appleTxt').focus(),50)};
 $('#appleBack').onclick=()=>scStage('start');
 $('#appleClear').onclick=()=>{$('#appleTxt').value='';$('#appleTxt').focus()};
 $('#appleOk').onclick=()=>{
