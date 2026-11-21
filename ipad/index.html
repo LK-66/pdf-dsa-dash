@@ -277,7 +277,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .rsel{min-height:48px;border:1px solid var(--line);border-radius:12px;padding:0 10px;font-weight:700;font-size:15px;background:var(--paper);color:var(--ink)}
 .langbadge{font-family:var(--f-mono);font-size:12px;font-weight:700;background:var(--navy);color:#fff;border-radius:6px;padding:4px 8px}
 @media (max-width:700px){.rseg button{padding:0 8px;font-size:13px}.rb-play{min-width:100px}.rb-exit span{display:none}}
-.v3 .seg,.v3 #resizer{display:none!important}
+.v3 #resizer{display:none!important}
 .v3 #left{display:none}
 .v3.pdfOpen #left{display:flex;position:fixed;inset:0;z-index:60;border-radius:0;border:0}
 .v3 #right{flex:1 1 100%}
@@ -294,6 +294,27 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .pdfname{font-family:var(--f-display);font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40vw}
 .pastebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff5cc;border:2px solid #f2c94c;border-radius:12px;padding:8px 10px;font-size:15px}
 .pastebar .btn.primary{min-height:44px;font-size:16px}
+.v3 #saveAnn,.v3 #savedList{display:none!important}
+.qname{border:1px dashed var(--line);background:var(--bg);border-radius:8px;padding:5px 10px;font-weight:700;color:var(--navy);cursor:pointer;max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.qname:hover{border-color:var(--green);color:var(--green)}
+.qmodal{width:min(720px,100%)}
+.qin{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:15px;min-width:0;flex:1 1 160px;background:var(--paper);color:var(--ink)}
+.qtit{flex:2 1 220px}
+.qcur{background:var(--green-soft);border-radius:10px;padding:10px 12px}
+#qList{display:flex;flex-direction:column;gap:12px;max-height:46vh;overflow:auto}
+.qgrp h4{margin:0 0 6px;font-family:var(--f-display);font-size:15px;color:var(--green);text-transform:uppercase;letter-spacing:.04em}
+.qitem{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+.qitem.cur{border-color:var(--green);box-shadow:0 0 0 2px var(--green-soft)}
+.qitem .qopen{flex:1;min-width:0;text-align:left;border:0;background:none;cursor:pointer;padding:0;color:var(--ink)}
+.qitem .qopen b{display:block;font-size:15px}
+.qitem .qopen small{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qitem .qdel.armed{background:var(--red);color:#fff;border-color:var(--red)}
+.qempty{color:var(--muted);text-align:center;padding:16px}
+.qfoot{border-top:1px solid var(--line);padding-top:10px}
+.qfoot label input{display:none}
+.penmodal{width:min(860px,100%)}
+.pentxt{width:100%;min-height:52vh;border:1px solid var(--line);border-radius:12px;padding:6px 16px;font-size:24px;line-height:48px;resize:vertical;font-family:var(--f-body);color:var(--ink);
+  background:#fffef8 repeating-linear-gradient(to bottom,transparent 0,transparent 47px,#cfe0f3 47px,#cfe0f3 48px);background-attachment:local}
 .toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,10px);background:var(--ink);color:#fff;padding:9px 14px;border-radius:8px;font-size:14px;z-index:60;opacity:0;transition:.2s;pointer-events:none;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -422,7 +443,10 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
   <section class="panel" id="right">
     <div class="ph">
       <h2><i data-i="book"></i> Editor DSA</h2>
+      <button class="qname" id="qName" title="Cambia nome o apri un altro testo">Senza titolo</button>
       <span class="spacer"></span>
+      <button class="btn" id="qBtn" title="Tutti i testi salvati, per materia"><i data-i="notebook"></i> Quaderni</button>
+      <button class="btn" id="penBtn" title="Scrivi a mano con l’Apple Pencil"><i data-i="pen"></i> Scrivi a mano</button>
       <button class="btn" id="readBtn" title="Mostra solo il testo, a tutto schermo"><i data-i="book"></i> Lettura</button>
       <button class="btn icon" id="dsaBtn" title="Impostazioni di lettura"><i data-i="settings"></i></button>
     </div>
@@ -464,6 +488,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
         <button class="btn" id="expWord"><i data-i="filedown"></i> Word</button>
         <button class="btn" id="expEdPdf"><i data-i="filedown"></i> PDF</button>
         <button class="btn" id="aiBtn" title="Correggi gli errori dell’OCR con Copilot o Claude"><i data-i="spark"></i> Correggi con IA</button>
+        <button class="btn" id="simpBtn" title="Semplifica il testo per un allievo DSA con Copilot o Claude"><i data-i="wand"></i> Semplifica</button>
         <button class="btn" id="expJson" title="Esporta annotazioni in un file"><i data-i="download"></i> File</button>
         <label class="btn" title="Importa annotazioni da file"><i data-i="fileup"></i> Importa
           <input type="file" id="jsonIn" accept=".json,application/json"></label>
@@ -571,15 +596,55 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
   </div>
 </div>
 
+<div class="ov" id="qOv" hidden>
+  <div class="modal qmodal" role="dialog" aria-label="Quaderni">
+    <div class="mh"><h3><i data-i="notebook"></i> Quaderni</h3><button class="btn icon" data-close="qOv"><i data-i="x"></i></button></div>
+    <div class="mb">
+      <div class="qcur">
+        <p class="hint">Testo aperto ora</p>
+        <div class="row">
+          <input class="qin" id="qMat" list="qMaterie" placeholder="Materia (es. Geografia)" autocomplete="off">
+          <input class="qin qtit" id="qTit" placeholder="Titolo (es. I fiumi)" autocomplete="off">
+          <button class="btn primary" id="qRename"><i data-i="check"></i> Salva nome</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="qNew">+ Nuovo testo</button>
+        <span class="spacer"></span>
+        <input class="qin" id="qFind" placeholder="Cerca…" autocomplete="off">
+      </div>
+      <div id="qList"></div>
+      <div class="row qfoot">
+        <button class="btn sm" id="qExport"><i data-i="download"></i> Esporta tutti (backup)</button>
+        <label class="btn sm"><i data-i="fileup"></i> Importa backup<input type="file" id="qImport" accept=".json,application/json"></label>
+      </div>
+      <datalist id="qMaterie"></datalist>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="penOv" hidden>
+  <div class="modal penmodal" role="dialog" aria-label="Scrivi a mano">
+    <div class="mh"><h3><i data-i="pen"></i> Scrivi a mano</h3><button class="btn icon" data-close="penOv"><i data-i="x"></i></button></div>
+    <div class="mb">
+      <p class="hint">Scrivi con l’<b>Apple Pencil</b> direttamente nelle righe: l’iPad trasforma la scrittura in testo (funzione «Scribble»). Per cancellare, fai uno scarabocchio sopra la parola.</p>
+      <textarea class="pentxt" id="penTxt" placeholder="Scrivi qui…" autocapitalize="sentences" spellcheck="true"></textarea>
+      <div class="row"><button class="btn" id="penClear">Svuota</button><span class="spacer"></span><button class="btn" data-close="penOv">Annulla</button><button class="btn primary" id="penOk"><i data-i="check"></i> Inserisci nell’editor</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="aiOv" hidden>
   <div class="modal" role="dialog" aria-label="Correggi con l’IA">
-    <div class="mh"><h3><i data-i="spark"></i> Correggi l’OCR con l’IA</h3><button class="btn icon" data-close="aiOv"><i data-i="x"></i></button></div>
+    <div class="mh"><h3 id="aiTitle"><i data-i="spark"></i> Correggi l’OCR con l’IA</h3><button class="btn icon" data-close="aiOv"><i data-i="x"></i></button></div>
     <div class="mb">
       <p class="hint" id="aiScope"></p>
+      <div class="row" id="aiLevelRow" hidden><span class="lbl">Livello</span>
+        <div class="seg" id="aiLevel"><button data-l="facile" class="on">Facile</button><button data-l="molto">Molto facile</button></div></div>
       <ol class="steps">
         <li><b>Copia</b> il testo con le istruzioni già pronte.</li>
         <li><b>Incollalo</b> in Copilot (account della scuola) o in Claude e invia.</li>
-        <li><b>Copia la risposta</b> e incollala qui sotto, poi premi “Sostituisci”.</li>
+        <li><b>Copia la risposta</b> e incollala qui sotto, poi premi <span id="aiStep3">“Sostituisci”</span>.</li>
       </ol>
       <div class="row">
         <button class="btn primary" id="aiCopy"><i data-i="copy"></i> 1 · Copia testo + istruzioni</button>
@@ -649,6 +714,8 @@ book:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2ZM22 3h-6a4 4 0 0 0-4 4v14
 switch:'<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16M16 16h5v5"/>',
 zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/>',
 check:'<path d="M20 6 9 17l-5-5"/>',
+notebook:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h8M8 11h6"/>',
+wand:'<path d="m15 4-1 2-2 1 2 1 1 2 1-2 2-1-2-1ZM5 20 16 9M19 13l-.5 1-1 .5 1 .5.5 1 .5-1 1-.5-1-.5Z"/>',
 spark:'<path d="M9.94 14.06 4 20M12 3l1.8 4.6L18.5 9.5l-4.7 1.9L12 16l-1.8-4.6L5.5 9.5l4.7-1.9Z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7Z"/>',
 move:'<path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>',
 volume:'<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
@@ -681,10 +748,8 @@ const STORAGE_KEY='pdf-dsa-annotations';
 
 /* ───────── PDF.js ───────── */
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
-(async()=>{ // worker come blob: funziona anche aprendo il file dal disco
-  try{const r=await fetch(PDFJS+'pdf.worker.min.js');const t=await r.text();pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:'text/javascript'}))}
-  catch(e){pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'}
-})();
+// motore di PDF.js dal CDN: PDF.js crea da solo il worker e, dove i worker sono bloccati, usa la riserva interna
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js';
 
 /* ───────── stato ───────── */
 const S={
@@ -1708,27 +1773,64 @@ Rispondi solo con il testo corretto, senza commenti.
 
 TESTO:
 `;
-let aiRange=null;
+const SIMP_PROMPT=lvl=>`Riscrivi il testo seguente per un allievo di scuola media con DSA (dislessia), nella STESSA LINGUA del testo e mantenendo tutti i contenuti importanti.
+Regole:
+- frasi brevi (al massimo ${lvl==='molto'?10:15} parole), una sola informazione per frase;
+- parole semplici e frequenti; se un termine difficile deve restare, spiegalo tra parentesi;
+- forma attiva, niente doppie negazioni, niente frasi incidentali;
+- paragrafi brevi, ognuno con un titoletto che inizia con "## ";
+- metti in **grassetto** le parole chiave (al massimo 2-3 per paragrafo);${lvl==='molto'?`
+- dopo ogni paragrafo aggiungi un elenco puntato di 2-3 punti (righe che iniziano con "- ") con le idee principali;`:''}
+- alla fine scrivi "Parole chiave:" e un elenco di 5-8 parole importanti con una spiegazione breve.
+Non aggiungere informazioni che non ci sono. Rispondi solo con il testo semplificato, senza commenti.
+
+TESTO:
+`;
+let aiRange=null,aiMode='fix',aiLvl='facile';
 function editorPlain(node){
   const c=node.cloneNode(true);c.querySelectorAll('br').forEach(b=>b.replaceWith('\n'));
   return [...c.childNodes].map(n=>n.nodeType===3?n.textContent:n.textContent+'\n').join('').replace(/\n{3,}/g,'\n\n').trim();
 }
-$('#aiBtn').onclick=()=>{
+const aiPromptText=()=>aiMode==='simp'?SIMP_PROMPT(aiLvl):AI_PROMPT;
+function openAi(mode){
   if(!editor.innerText.trim()){toast('L’editor è vuoto');return}
-  const s=getSelection();aiRange=null;
+  aiMode=mode;const s=getSelection();aiRange=null;
   if(s.rangeCount&&s.toString().trim().split(/\s+/).length>=3&&editor.contains(s.getRangeAt(0).commonAncestorContainer))aiRange=s.getRangeAt(0).cloneRange();
-  $('#aiScope').innerHTML=aiRange?'Verrà corretto <b>solo il testo selezionato</b> nell’editor.':'Verrà corretto <b>tutto il testo</b> dell’editor. Per correggerne solo una parte, selezionala prima di premere il pulsante.';
-  $('#aiPrompt').textContent=AI_PROMPT+'…';$('#aiPaste').value='';$('#aiOv').hidden=false;
-};
+  const simp=mode==='simp',what=simp?'semplificato':'corretto';
+  $('#aiTitle').innerHTML=simp?ic('wand')+' Semplifica il testo con l’IA':ic('spark')+' Correggi l’OCR con l’IA';
+  $('#aiScope').innerHTML=(aiRange?`Verrà ${what} <b>solo il testo selezionato</b> nell’editor.`:`Verrà ${what} <b>tutto il testo</b> dell’editor. Per lavorare solo su una parte, selezionala prima di premere il pulsante.`)+(simp?' Il testo semplificato viene <b>aggiunto sotto</b>, l’originale resta.':'');
+  $('#aiLevelRow').hidden=!simp;$('#aiStep3').textContent=simp?'“Aggiungi nell’editor”':'“Sostituisci”';
+  $('#aiApply').innerHTML=ic('check')+(simp?' Aggiungi nell’editor':' Sostituisci nell’editor');
+  $('#aiPaste').placeholder=simp?'3 · Incolla qui il testo semplificato…':'3 · Incolla qui il testo corretto…';
+  $('#aiPrompt').textContent=aiPromptText()+'…';$('#aiPaste').value='';$('#aiOv').hidden=false;
+}
+$('#aiBtn').onclick=()=>openAi('fix');
+$('#simpBtn').onclick=()=>openAi('simp');
+$$('#aiLevel button').forEach(b=>b.onclick=()=>{aiLvl=b.dataset.l;$$('#aiLevel button').forEach(x=>x.classList.toggle('on',x===b));$('#aiPrompt').textContent=aiPromptText()+'…'});
 function aiText(){if(aiRange){const d=document.createElement('div');d.appendChild(aiRange.cloneContents());return editorPlain(d)}return editorPlain(editor)}
 $('#aiCopy').onclick=async()=>{
-  const txt=AI_PROMPT+aiText();let ok=false;
+  const txt=aiPromptText()+aiText();let ok=false;
   try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
   if(!ok){const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();try{ok=document.execCommand('copy')}catch(e){}ta.remove()}
   toast(ok?'Copiato! Ora incollalo in Copilot o Claude':'Copia non riuscita: seleziona il testo dall’editor e copialo a mano');
 };
+// risposta dell'IA → HTML: ## titoletti, - elenchi, **grassetto**
+function mdToHtml(t){
+  return t.split(/\n/).map(l=>{const x=l.trim();if(!x)return'<br>';
+    if(/^—/.test(x))return`<div class="sec">${esc(x)}</div>`;
+    let h=esc(x).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|\s)\*(\S[^*]*?)\*(?=\s|$|[.,;:!?])/g,'$1<i>$2</i>');
+    if(/^#{1,4}\s/.test(x))return`<div><b>${h.replace(/^#{1,4}\s+/,'')}</b></div>`;
+    if(/^[-*•]\s/.test(x))return`<div>• ${h.replace(/^[-*•]\s+/,'')}</div>`;
+    return`<div>${h}</div>`}).join('');
+}
 $('#aiApply').onclick=()=>{
-  const t=$('#aiPaste').value.replace(/^```\w*\n?|```$/g,'').trim();if(!t){toast('Incolla prima il testo corretto');return}
+  const t=$('#aiPaste').value.replace(/^```\w*\n?|```$/g,'').trim();if(!t){toast('Incolla prima la risposta dell’IA');return}
+  if(aiMode==='simp'){
+    const html=`<div class="sec">— Testo semplificato —</div>${mdToHtml(t)}<br>`;
+    if(aiRange&&editor.contains(aiRange.commonAncestorContainer)){const r=aiRange.cloneRange();r.collapse(false);let n=r.endContainer;while(n&&n.parentNode!==editor)n=n.parentNode;if(n)n.insertAdjacentHTML('afterend',html);else edAppend(html)}
+    else edAppend(html);
+    aiRange=null;$('#aiOv').hidden=true;setStatus('Testo semplificato aggiunto nell’editor');toast('✓ Testo semplificato aggiunto');return;
+  }
   const html=t.split(/\n/).map(l=>l.trim()?(/^—/.test(l.trim())?`<div class="sec">${esc(l.trim())}</div>`:`<div>${esc(l)}</div>`):'<br>').join('');
   if(aiRange&&editor.contains(aiRange.commonAncestorContainer)){aiRange.deleteContents();const f=aiRange.createContextualFragment(html);aiRange.insertNode(f);editor.normalize()}
   else editor.innerHTML=html;
@@ -1792,13 +1894,79 @@ document.addEventListener('keydown',e=>{
 
 readUi({playing:false});
 $$('.ocrLangSel').forEach(sl=>{sl.value=S.ocrLang;sl.onchange=e=>setOcrLang(e.target.value)});
-/* salvataggio automatico dell'editor in questo browser */
+/* ───────── Quaderni: tanti testi salvati per materia (in questo browser) ─────────
+   Il testo aperto si salva da solo mentre lavori; dai un nome con Materia › Titolo. */
+const QK='pdf-dsa-quaderni',QC='pdf-dsa-quaderno-attivo';
+const MATERIE=['Italiano','Francese','Tedesco','Inglese','Matematica','Scienze','Storia','Geografia','Educazione civica','Altro'];
+let Q=store.get(QK,[]),qCur=store.get(QC,null),qDelArm=null;
+const qGet=id=>Q.find(d=>d.id===id);
+function qPersist(){if(!store.set(QK,Q))toast('Spazio del browser pieno: esporta i quaderni in un file (Quaderni › Esporta)');store.set(QC,qCur)}
+function qTitle(){const d=qGet(qCur);$('#qName').textContent=d?`${d.materia} › ${d.titolo}`:'Senza titolo · dai un nome'}
+function qStore(){
+  let d=qGet(qCur);
+  if(!d){if(!editor.textContent.trim())return;d={id:uid(),materia:'Altro',titolo:'Senza titolo',html:'',created:Date.now()};Q.push(d);qCur=d.id}
+  d.html=editor.innerHTML;d.updated=Date.now();qPersist();qTitle();
+}
+function qOpen(id){qStore();const d=qGet(id);if(!d)return;if(edReader)edReader.stop(true);qCur=id;editor.innerHTML=d.html||'';qPersist();qTitle();updateDub();editor.scrollTop=0}
+function qNew(){qStore();const prev=qGet(qCur);const d={id:uid(),materia:prev?prev.materia:'Altro',titolo:'Nuovo testo',html:'',created:Date.now(),updated:Date.now()};Q.push(d);qCur=d.id;editor.innerHTML='';qPersist();qTitle();updateDub();qFill();renderQ();setTimeout(()=>{$('#qTit').select()},50)}
+function qFill(){const d=qGet(qCur);$('#qMat').value=d?d.materia:'';$('#qTit').value=d?d.titolo:''}
+function renderQ(){
+  const f=$('#qFind').value.trim().toLowerCase();
+  $('#qMaterie').innerHTML=[...new Set([...MATERIE,...Q.map(d=>d.materia)])].map(m=>`<option value="${esc(m)}">`).join('');
+  const list=Q.filter(d=>!f||(d.materia+' '+d.titolo+' '+(d.html||'').replace(/<[^>]+>/g,' ')).toLowerCase().includes(f)).sort((a,b)=>a.materia.localeCompare(b.materia)||(b.updated||0)-(a.updated||0));
+  if(!list.length){$('#qList').innerHTML=`<p class="qempty">${Q.length?'Nessun testo trovato.':'Ancora nessun testo salvato. Il testo che scrivi si salva da solo: dagli un nome qui sopra.'}</p>`;return}
+  const groups={};list.forEach(d=>(groups[d.materia]=groups[d.materia]||[]).push(d));
+  $('#qList').innerHTML=Object.entries(groups).map(([m,ds])=>`<div class="qgrp"><h4>${esc(m)}</h4>${ds.map(d=>{
+    const prev=(d.html||'').replace(/<div class="sec">.*?<\/div>/g,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim().slice(0,90);
+    const dt=d.updated?new Date(d.updated).toLocaleDateString('it-CH',{day:'numeric',month:'short'}):'';
+    return`<div class="qitem${d.id===qCur?' cur':''}"><button class="qopen" data-id="${d.id}"><b>${esc(d.titolo)}${d.id===qCur?' · aperto':''}</b><small>${esc(dt)}${prev?' · '+esc(prev):''}</small></button><button class="btn sm icon qdel" data-del="${d.id}" title="Elimina">${ic('trash')}</button></div>`}).join('')}</div>`).join('');
+}
+function openQ(){qStore();qFill();qDelArm=null;$('#qFind').value='';renderQ();$('#qOv').hidden=false}
+$('#qBtn').onclick=openQ;$('#qName').onclick=openQ;
+$('#qFind').oninput=renderQ;
+$('#qNew').onclick=qNew;
+$('#qRename').onclick=()=>{
+  const m=$('#qMat').value.trim()||'Altro',t=$('#qTit').value.trim()||'Senza titolo';
+  let d=qGet(qCur);if(!d){d={id:uid(),created:Date.now(),html:editor.innerHTML};Q.push(d);qCur=d.id}
+  d.materia=m;d.titolo=t;d.html=editor.innerHTML;d.updated=Date.now();qPersist();qTitle();renderQ();toast(`✓ Salvato in ${m} › ${t}`);
+};
+[$('#qMat'),$('#qTit')].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#qRename').click()}}));
+$('#qList').onclick=e=>{
+  const o=e.target.closest('.qopen'),dl=e.target.closest('[data-del]');
+  if(o){qOpen(o.dataset.id);$('#qOv').hidden=true;toast('Aperto: '+$('#qName').textContent);return}
+  if(dl){const id=dl.dataset.del;
+    if(qDelArm!==id){qDelArm=id;$$('.qdel').forEach(b=>b.classList.toggle('armed',b.dataset.del===id));toast('Tocca di nuovo il cestino per eliminare');return}
+    Q=Q.filter(d=>d.id!==id);qDelArm=null;
+    if(id===qCur){const next=[...Q].sort((a,b)=>(b.updated||0)-(a.updated||0))[0];qCur=next?next.id:null;editor.innerHTML=next?next.html:'';updateDub()}
+    qPersist();qTitle();qFill();renderQ();toast('Testo eliminato')}
+};
+$('#qExport').onclick=()=>{qStore();download(new Blob([JSON.stringify({app:'PDF DSA iPad',quaderni:Q,data:new Date().toISOString()},null,1)],{type:'application/json'}),`quaderni-dsa-${new Date().toISOString().slice(0,10)}.json`);toast('Backup dei quaderni scaricato')};
+$('#qImport').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);const arr=Array.isArray(d)?d:d.quaderni;if(!Array.isArray(arr))throw 0;let n=0;
+  arr.forEach(x=>{if(!x||!x.id)return;const i=Q.findIndex(y=>y.id===x.id);if(i<0){Q.push(x);n++}else if((x.updated||0)>(Q[i].updated||0)){Q[i]=x;n++}});qPersist();renderQ();toast(`Importati ${n} testi`)}catch(err){toast('File di backup non valido')}};r.readAsText(f)};
+// avvio: riapre il testo attivo (o il testo salvato dalle versioni precedenti); salvataggio automatico
 (()=>{
-  const KEY='pdf-dsa-editor';let t=null;
-  const save=()=>{clearTimeout(t);t=setTimeout(()=>{store.set(KEY,{html:editor.innerHTML,ts:Date.now()})},400)};
-  try{const d=store.get(KEY,null);if(d&&d.html&&!editor.textContent.trim()){editor.innerHTML=d.html;updateDub();setStatus('Testo dell’editor ripristinato')}}catch(e){}
-  new MutationObserver(save).observe(editor,{childList:true,subtree:true,characterData:true});
+  const d=qGet(qCur);
+  if(d){editor.innerHTML=d.html||'';updateDub()}
+  else{const old=store.get('pdf-dsa-editor',null);if(old&&old.html&&!editor.textContent.trim()){editor.innerHTML=old.html;updateDub()}}
+  qTitle();let t=null;
+  new MutationObserver(()=>{clearTimeout(t);t=setTimeout(qStore,500)}).observe(editor,{childList:true,subtree:true,characterData:true});
+  window.addEventListener('pagehide',qStore);
 })();
+
+/* ───────── Scrivi a mano (Apple Pencil · Scribble) ───────── */
+let edCaret=null;
+document.addEventListener('selectionchange',()=>{const s=getSelection();if(s.rangeCount&&editor.contains(s.getRangeAt(0).commonAncestorContainer))edCaret=s.getRangeAt(0).cloneRange()});
+$('#penBtn').addEventListener('mousedown',e=>e.preventDefault());
+$('#penBtn').onclick=()=>{$('#penOv').hidden=false;if(!IOS)setTimeout(()=>$('#penTxt').focus(),50)};
+$('#penClear').onclick=()=>{$('#penTxt').value=''};
+$('#penOk').onclick=()=>{
+  const t=$('#penTxt').value.trim();if(!t){toast('Scrivi prima qualcosa');return}
+  const html=toHtml(t);
+  if(edCaret&&editor.contains(edCaret.startContainer)){const r=edCaret;r.deleteContents();const sp=document.createElement('span');sp.innerHTML=(r.startOffset>0?' ':'')+html+' ';r.insertNode(sp);sp.replaceWith(...sp.childNodes);editor.normalize()}
+  else edAppend(`<div>${html}</div>`);
+  $('#penTxt').value='';$('#penOv').hidden=true;toast('✓ Testo inserito nell’editor');
+};
+
 /* ───────── v3 · PDF DSA iPad: editor al centro, PDF a tutto schermo, Scansiona = Apple ───────── */
 function openPdf(){document.body.classList.add('pdfOpen');$('#pdfName').textContent=S.fileName||'PDF';requestAnimationFrame(()=>{if(S.pages.length)fitWidth()})}
 function closePdf(){document.body.classList.remove('pdfOpen');$('#floatCopy').hidden=true}

@@ -35,3 +35,7 @@ I testi e le foto restano sul dispositivo: nulla viene caricato su server.
 - «Scansiona testo»: su iPad avvia subito il Comando rapido «Testo DSA» (riconoscimento di Apple) e il testo entra nell'editor da solo; se serve, un banner «Incolla nell'editor»
 - «Importa testo nell'editor» dal PDF aggiunge il testo senza cancellare quello già scritto
 - Menu ▾: incolla testo copiato, OCR dell'app con scelta delle righe, istruzioni del comando
+- Quaderni: tanti testi salvati per materia (Materia › Titolo), ricerca, backup in un file
+- Scrivi a mano: area a righe per scrivere con l'Apple Pencil (Scribble) e inserire al cursore
+- Semplifica: prepara per Copilot o Claude la richiesta di semplificare il testo per un allievo DSA (Facile / Molto facile); la risposta viene aggiunta sotto con titoletti, grassetti ed elenchi
+- Lettore PDF più robusto (motore caricato dal CDN, con riserva dove i worker sono bloccati)
