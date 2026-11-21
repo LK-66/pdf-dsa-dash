@@ -26,3 +26,5 @@ I testi e le foto restano sul dispositivo: nulla viene caricato su server.
 - Modalità Lettura con Play / Pausa / Stop, velocità, lingua e tocco sulla parola per partire da lì
 - OCR più preciso: foto a piena risoluzione con la fotocamera del dispositivo, lettura in scala di grigi con secondo tentativo automatico in bianco/nero per fotocopie e ombre, titoli separati dai paragrafi
 - Su iPad e iPhone: «Testo da Apple (Fotocamera)»: copi il testo con Testo attivo dell'app Fotocamera e lo incolli con un tasto
+- «Scatta e riconosci con Apple»: avvia il Comando rapido «Testo DSA» (Scatta foto → Estrai testo dall'immagine → Copia negli appunti) e al ritorno incolla il testo
+- Il testo dell'editor viene salvato automaticamente nel browser

@@ -235,6 +235,11 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .sc-apple{width:min(680px,94%);height:100%;display:flex;flex-direction:column;gap:10px;padding:8px 0;user-select:text;-webkit-user-select:text}
 .sc-apple textarea,.sc-sheet textarea{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default} /* iPad: senza questo il riquadro non si può toccare né scrivere */
 .sc-lead{margin:0;font-size:16px;font-weight:700}
+.sc-hint{color:rgba(255,255,255,.75)}
+.sc-how{background:rgba(255,255,255,.08);border-radius:12px;padding:10px 12px}
+.sc-how summary{cursor:pointer}.sc-how ol{margin:8px 0}.sc-how .hint{color:rgba(255,255,255,.75)}
+.pulse{animation:pulse2 1s ease-in-out 3}
+@keyframes pulse2{50%{transform:scale(1.06);box-shadow:0 0 0 6px rgba(255,214,10,.5)}}
 .sc-apple #applePaste{align-self:flex-start}
 .sc-apple ol{margin:0;padding-left:1.3em;font-size:15px;line-height:1.5}
 .sc-apple textarea{flex:1;min-height:160px;border-radius:12px;border:2px solid #ffd60a;padding:12px;font-size:17px;line-height:1.5;background:#fff;color:#111}
@@ -466,7 +471,19 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <p class="sc-tip">Per un testo preciso: pagina intera con un po' di margine, dispositivo parallelo al foglio, luce uniforme e senza riflessi.</p>
     </div>
     <div class="sc-apple" id="scAppleBox" hidden>
-      <p class="sc-lead">Il riconoscimento di Apple è molto preciso e raddrizza la pagina da solo. Si usa dall'app Fotocamera:</p>
+      <p class="sc-lead">Il riconoscimento di Apple è molto preciso e raddrizza la pagina da solo.</p>
+      <button class="btn primary sc-big" id="appleShortcut"><i data-i="camera"></i> Scatta e riconosci con Apple</button>
+      <p class="hint sc-hint">Apre la fotocamera con il Comando rapido <b>«Testo DSA»</b>: scatti, il testo viene copiato e torni qui toccando <b>‹ Safari</b> in alto a sinistra.</p>
+      <details class="sc-how"><summary><b>Prima volta: crea il Comando rapido «Testo DSA»</b> (2 minuti)</summary>
+        <ol>
+          <li>Apri l'app <b>Comandi</b> e tocca <b>+</b> (nuovo comando). Chiamalo esattamente <b>Testo DSA</b>.</li>
+          <li>Aggiungi l'azione <b>«Scatta foto»</b> (lascia attiva l'anteprima della fotocamera).</li>
+          <li>Aggiungi l'azione <b>«Estrai testo dall'immagine»</b>.</li>
+          <li>Aggiungi l'azione <b>«Copia negli appunti»</b>. Fatto.</li>
+        </ol>
+        <p class="hint">La prima volta l'iPad chiede di consentire la fotocamera al comando, e Safari chiede se aprire «Comandi»: rispondi sì.</p>
+      </details>
+      <p class="sc-lead" style="margin-top:6px">Oppure, a mano, dall'app Fotocamera:</p>
       <ol>
         <li>Apri l'app <b>Fotocamera</b> e inquadra il testo.</li>
         <li>Tocca l'icona <b>Testo attivo</b> (righe in un riquadro, in basso a destra), poi <b>«Copia tutto»</b>. Puoi anche selezionare solo una parte e scegliere «Copia».</li>
@@ -1268,6 +1285,31 @@ $$('.scRetry').forEach(b=>b.onclick=()=>{if(TOUCH)scStage('start');else{scStage(
 $('#scApple').hidden=!IS_IOS;
 $('#scApple').onclick=()=>{scStage('apple');if(!IS_IOS)setTimeout(()=>$('#appleTxt').focus(),50)};
 $('#appleBack').onclick=()=>scStage('start');
+// Comando rapido «Testo DSA»: fotocamera → Estrai testo (Apple) → appunti → ritorno qui
+const SHORTCUT='Testo DSA';
+$('#appleShortcut').onclick=()=>{
+  store.set('pdf-dsa-shortcut',Date.now());
+  const base=location.href.split('#')[0];
+  location.href='shortcuts://x-callback-url/run-shortcut?name='+encodeURIComponent(SHORTCUT)+'&x-success='+encodeURIComponent(base+'#incolla')+'&x-cancel='+encodeURIComponent(base+'#annullato');
+};
+function backFromShortcut(res){
+  store.set('pdf-dsa-shortcut',0);
+  if(scEl.ov.hidden)openCam();scStage('apple');
+  if(res){const ta=$('#appleTxt');ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+res.trim();toast('Testo riconosciuto: controllalo e premi «Inserisci»');return}
+  const b=$('#applePaste');b.classList.remove('pulse');void b.offsetWidth;b.classList.add('pulse');
+  toast('Bentornato! Premi «Incolla testo copiato»');
+}
+function checkHash(){
+  const h=location.hash;if(!h)return;
+  if(h.startsWith('#incolla')){const m=h.match(/result=([^&]*)/);let res='';if(m)try{res=decodeURIComponent(m[1].replace(/\+/g,' '))}catch(e){}
+    history.replaceState(null,'',location.pathname+location.search);backFromShortcut(res)}
+  else if(h==='#annullato'){history.replaceState(null,'',location.pathname+location.search);store.set('pdf-dsa-shortcut',0);toast('Scansione annullata')}
+}
+window.addEventListener('hashchange',checkHash);
+document.addEventListener('visibilitychange',()=>{ // tornato con ‹ Safari dopo il comando
+  if(document.visibilityState!=='visible')return;
+  const t=store.get('pdf-dsa-shortcut',0);if(t&&Date.now()-t<10*60*1000&&!location.hash)backFromShortcut('');
+});
 $('#applePaste').onclick=async()=>{
   const ta=$('#appleTxt');
   try{const t=await navigator.clipboard.readText();
@@ -1686,6 +1728,14 @@ document.addEventListener('keydown',e=>{
 
 readUi({playing:false});
 $$('.ocrLangSel').forEach(sl=>{sl.value=S.ocrLang;sl.onchange=e=>setOcrLang(e.target.value)});
+/* salvataggio automatico dell'editor in questo browser */
+(()=>{
+  const KEY='pdf-dsa-editor';let t=null;
+  const save=()=>{clearTimeout(t);t=setTimeout(()=>{store.set(KEY,{html:editor.innerHTML,ts:Date.now()})},400)};
+  try{const d=store.get(KEY,null);if(d&&d.html&&!editor.textContent.trim()){editor.innerHTML=d.html;updateDub();setStatus('Testo dell’editor ripristinato')}}catch(e){}
+  new MutationObserver(save).observe(editor,{childList:true,subtree:true,characterData:true});
+})();
+checkHash();
 updateChrome();
 if(!window.pdfjsLib){setStatus('⚠️ Serve una connessione internet per caricare il lettore PDF')}
 </script>
