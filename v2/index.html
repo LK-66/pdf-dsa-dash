@@ -473,7 +473,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
     <div class="sc-apple" id="scAppleBox" hidden>
       <p class="sc-lead">Il riconoscimento di Apple è molto preciso e raddrizza la pagina da solo.</p>
       <button class="btn primary sc-big" id="appleShortcut"><i data-i="camera"></i> Scatta e riconosci con Apple</button>
-      <p class="hint sc-hint">Apre la fotocamera con il Comando rapido <b>«Testo DSA»</b>: scatti, il testo viene copiato e torni qui toccando <b>‹ Safari</b> in alto a sinistra.</p>
+      <p class="hint sc-hint">Apre la fotocamera con il Comando rapido <b>«Testo DSA»</b>: scatti, il testo viene copiato, torni qui toccando <b>‹ Safari</b> in alto a sinistra e premi <b>«Incolla nell’editor»</b>.</p>
       <details class="sc-how"><summary><b>Prima volta: crea il Comando rapido «Testo DSA»</b> (2 minuti)</summary>
         <ol>
           <li>Apri l'app <b>Comandi</b> e tocca <b>+</b> (nuovo comando). Chiamalo esattamente <b>Testo DSA</b>.</li>
@@ -487,10 +487,10 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <ol>
         <li>Apri l'app <b>Fotocamera</b> e inquadra il testo.</li>
         <li>Tocca l'icona <b>Testo attivo</b> (righe in un riquadro, in basso a destra), poi <b>«Copia tutto»</b>. Puoi anche selezionare solo una parte e scegliere «Copia».</li>
-        <li>Torna qui e premi <b>«Incolla testo copiato»</b>, poi <b>«Inserisci nell'editor»</b>.</li>
+        <li>Torna qui e premi <b>«Incolla nell’editor»</b>: il testo va subito nell'editor.</li>
       </ol>
-      <button class="btn primary sc-big" id="applePaste"><i data-i="copy"></i> Incolla testo copiato</button>
-      <textarea id="appleTxt" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Il testo incollato compare qui: puoi controllarlo e correggerlo."></textarea>
+      <button class="btn primary sc-big" id="applePaste"><i data-i="copy"></i> Incolla nell’editor</button>
+      <textarea id="appleTxt" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="In alternativa: tieni premuto qui, scegli «Incolla», correggi se serve e premi «Inserisci nell’editor»."></textarea>
       <div class="row"><button class="btn" id="appleBack">‹ Indietro</button><button class="btn" id="appleClear">Svuota</button><span class="spacer"></span><button class="btn primary" id="appleOk"><i data-i="check"></i> Inserisci nell'editor</button></div>
     </div>
     <div class="sc-err" id="camErr" hidden><p id="camErrTxt"></p>
@@ -1295,9 +1295,9 @@ $('#appleShortcut').onclick=()=>{
 function backFromShortcut(res){
   store.set('pdf-dsa-shortcut',0);
   if(scEl.ov.hidden)openCam();scStage('apple');
-  if(res){const ta=$('#appleTxt');ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+res.trim();toast('Testo riconosciuto: controllalo e premi «Inserisci»');return}
+  if(res&&appleToEditor(res))return;
   const b=$('#applePaste');b.classList.remove('pulse');void b.offsetWidth;b.classList.add('pulse');
-  toast('Bentornato! Premi «Incolla testo copiato»');
+  toast('Bentornato! Premi «Incolla nell’editor»');
 }
 function checkHash(){
   const h=location.hash;if(!h)return;
@@ -1314,10 +1314,16 @@ $('#applePaste').onclick=async()=>{
   const ta=$('#appleTxt');
   try{const t=await navigator.clipboard.readText();
     if(!t.trim()){toast('Negli appunti non c’è testo: copia prima con «Testo attivo»');return}
-    ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+t.trim();toast('Testo incollato: controllalo e premi «Inserisci»');
+    appleToEditor(t);
   }catch(e){ta.focus();toast('Tieni premuto nel riquadro e scegli «Incolla»')}
 };
 $('#appleClear').onclick=()=>{$('#appleTxt').value='';$('#appleTxt').focus()};
+function appleToEditor(raw){
+  const t=tidy(cleanText(raw||''));if(!t.trim())return false;
+  edAppend(`<div class="sec">— Testo da fotocamera —</div><div>${toHtml(t)}</div><br>`);
+  $('#appleTxt').value='';closeCam();setStatus('Testo da fotocamera inserito nell’editor');toast('✓ Testo inserito nell’editor');
+  return true;
+}
 $('#appleOk').onclick=()=>{
   const raw=$('#appleTxt').value.trim();if(!raw){toast('Il riquadro è vuoto: usa «Scansiona testo»');return}
   const t=tidy(cleanText(raw));
