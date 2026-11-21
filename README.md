@@ -4,7 +4,8 @@ App web per allievi con DSA: apri un PDF o una foto, evidenzia e annota, leggi i
 
 **Apri l'app:**
 - Versione 1 (stabile): https://lk-66.github.io/pdf-dsa-dash/
-- Versione 2 (nuova): https://lk-66.github.io/pdf-dsa-dash/v2/
+- Versione 2: https://lk-66.github.io/pdf-dsa-dash/v2/
+- Versione 3 · PDF DSA iPad: https://lk-66.github.io/pdf-dsa-dash/ipad/
 
 ## Funzioni
 - Viewer PDF con zoom, evidenziatore (4 colori), sottolineatura, penna, evidenziatore a mano libera e note
@@ -28,3 +29,9 @@ I testi e le foto restano sul dispositivo: nulla viene caricato su server.
 - Su iPad e iPhone: «Testo da Apple (Fotocamera)»: copi il testo con Testo attivo dell'app Fotocamera e lo incolli con un tasto
 - «Scatta e riconosci con Apple»: avvia il Comando rapido «Testo DSA» (Scatta foto → Estrai testo dall'immagine → Copia negli appunti) e al ritorno incolla il testo
 - Il testo dell'editor viene salvato automaticamente nel browser
+
+## PDF DSA iPad (versione 3)
+- Si lavora nell'editor a tutto schermo; il PDF si apre a tutto schermo con «PDF» e si torna con «‹ Editor»
+- «Scansiona testo»: su iPad avvia subito il Comando rapido «Testo DSA» (riconoscimento di Apple) e il testo entra nell'editor da solo; se serve, un banner «Incolla nell'editor»
+- «Importa testo nell'editor» dal PDF aggiunge il testo senza cancellare quello già scritto
+- Menu ▾: incolla testo copiato, OCR dell'app con scelta delle righe, istruzioni del comando
