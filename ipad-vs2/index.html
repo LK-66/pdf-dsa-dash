@@ -264,6 +264,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .sc-sheet summary{cursor:pointer}
 .sc-end .btn.primary{font-size:16px;min-height:44px}
 /* modalità Lettura */
+#dsaOv,#vOv{z-index:95} /* sopra la modalità Lettura */
 #readOv{position:fixed;inset:0;z-index:80;overflow:auto;-webkit-overflow-scrolling:touch}
 #readTxt{max-width:68ch;margin:0 auto;padding:max(40px,env(safe-area-inset-top)) 28px 160px;cursor:pointer}
 #readTxt .sec,#readTxt br+br{display:none}
@@ -716,6 +717,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
     <button class="rb vBtn" title="Scegli la voce per ogni lingua">Voci</button>
     <span class="langbadge" id="rBadge" hidden></span>
     <span class="spacer"></span>
+    <button class="rb" id="readSet" aria-label="Impostazioni di lettura" title="Impostazioni di lettura: carattere, sfondo, spaziature"><i data-i="settings"></i></button>
     <button class="rb" id="readMinus" aria-label="Testo più piccolo">A−</button>
     <button class="rb" id="readPlus" aria-label="Testo più grande">A+</button>
     <button class="rb rb-exit" id="readClose" aria-label="Esci dalla modalità lettura"><i data-i="x"></i><span>Esci</span></button>
@@ -1607,6 +1609,7 @@ function applyDsa(){
   $('#sSizeV').textContent=d.fontSize+'px';$('#sLineV').textContent=d.lineHeight;$('#sLetV').textContent=d.letterSpacing.toFixed(2);$('#sWordV').textContent=d.wordSpacing.toFixed(2);
   $$('#sThemes button').forEach(b=>b.classList.toggle('on',b.dataset.t===d.theme));
   store.set('pdf-dsa-settings',d);
+  if(!$('#readOv').hidden&&window.readStyle)readStyle(); // in Lettura le modifiche si vedono subito
 }
 $('#sFont').onchange=e=>{S.dsa.fontFamily=e.target.value;applyDsa()};
 [['#sSize','fontSize',parseInt],['#sLine','lineHeight',parseFloat],['#sLet','letterSpacing',parseFloat],['#sWord','wordSpacing',parseFloat]].forEach(([s,k,f])=>$(s).oninput=e=>{S.dsa[k]=f(e.target.value);applyDsa()});
@@ -1951,15 +1954,16 @@ function openReading(){
   c.querySelectorAll('.ocr-dubbio').forEach(x=>x.replaceWith(...x.childNodes));
   c.querySelectorAll('.sec').forEach(x=>x.remove());
   $('#readTxt').innerHTML=c.innerHTML;readStyle();readResume=null;syncTtsUi();
-  ['.top','.main','#dsaOv','#camOv','#aiOv'].forEach(q=>{const e=$(q);e.setAttribute('aria-hidden','true');e.inert=true});
+  ['.top','.main','#camOv','#aiOv'].forEach(q=>{const e=$(q);e.setAttribute('aria-hidden','true');e.inert=true});
   $('#readOv').hidden=false;$('#readOv').scrollTop=0;document.body.style.overflow='hidden';
   toast(readReader?'Premi Leggi o tocca una parola per partire da lì':'Usa il Controller lettura dell’iPad');
 }
 function closeReading(){
   if(readReader)readReader.stop(true);
   $('#readOv').hidden=true;document.body.style.overflow='';
-  ['.top','.main','#dsaOv','#camOv','#aiOv'].forEach(q=>{const e=$(q);e.removeAttribute('aria-hidden');e.inert=false});
+  ['.top','.main','#camOv','#aiOv'].forEach(q=>{const e=$(q);e.removeAttribute('aria-hidden');e.inert=false});
 }
+$('#readSet').onclick=()=>$('#dsaOv').hidden=false;
 $('#readBtn').onclick=openReading;$('#readClose').onclick=closeReading;
 $('#readPlus').onclick=()=>{readSize=Math.min(16,readSize+2);readStyle()};
 $('#readMinus').onclick=()=>{readSize=Math.max(-6,readSize-2);readStyle()};
