@@ -1310,7 +1310,7 @@ async function runOCROnArea(n,a){
 /* ───────── scanner a tutto schermo: scatto → ritaglio → righe da scegliere ───────── */
 const TOUCH=/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-const cam={stream:null,facing:'environment',canvas:null,cropCanvas:null,crop:{x:0,y:0,w:1,h:1},lines:[],sel:[],res:null,dest:'editor',stage:'live'};
+const cam={stream:null,facing:'environment',canvas:null,cropCanvas:null,crop:{x:0,y:0,w:1,h:1},lines:[],sel:[],res:null,dest:'editor',stage:'live',deviceId:store.get('pdf-dsa-camdev',null),devs:null,curId:null,autoTried:false};
 const scEl={ov:$('#camOv'),video:$('#camVideo'),guide:$('#scGuide'),photo:$('#scPhoto'),img:$('#camImg'),crop:$('#scCrop'),lines:$('#scLines'),
   err:$('#camErr'),proc:$('#camProc'),procTxt:$('#camProcTxt'),title:$('#scTitle'),live:$('#scBarLive'),cropBar:$('#scBarCrop'),sel:$('#scBarSel')};
 function scStage(st){
@@ -1333,13 +1333,38 @@ function openCam(){
 async function startCam(){
   stopCam();scEl.err.hidden=true;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){camError('La fotocamera diretta non è disponibile qui.');return}
-  try{
-    cam.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cam.facing,width:{ideal:2560},height:{ideal:1920}}});
-    scEl.video.srcObject=cam.stream;$('#camShoot').disabled=false;$('#camSwitch').disabled=false;
-    if(cam.stage==='live')scStage('live');
-  }catch(err){
-    camError(err.name==='NotAllowedError'?'Permesso fotocamera negato (puoi abilitarlo nelle impostazioni del browser).':err.name==='NotFoundError'?'Nessuna fotocamera trovata.':'Fotocamera non disponibile.');
+  // Su computer e 2 in 1 (Windows) il browser spesso non sa quale fotocamera è «dietro»:
+  // si sceglie per nome (Rear/Back/Posteriore…), si ricorda la scelta e «Gira» passa da una fotocamera all'altra.
+  const size={width:{ideal:2560},height:{ideal:1920}};
+  const want=cam.deviceId?{deviceId:{exact:cam.deviceId},...size}:{facingMode:cam.facing,...size};
+  let err0=null;
+  for(const c of [want,cam.deviceId?{deviceId:{exact:cam.deviceId}}:{facingMode:cam.facing},true]){
+    try{cam.stream=await navigator.mediaDevices.getUserMedia({video:c});break}
+    catch(err){err0=err;if(err.name==='NotAllowedError'||err.name==='SecurityError')break;if(err.name==='NotFoundError'&&cam.deviceId){cam.deviceId=null;store.set('pdf-dsa-camdev',null)}}
   }
+  if(!cam.stream){
+    const n=err0&&err0.name;
+    camError(n==='NotAllowedError'||n==='SecurityError'?'Permesso fotocamera negato. Tocca il lucchetto accanto all’indirizzo e consenti la fotocamera. Su Windows controlla anche Impostazioni › Privacy › Fotocamera: «Consenti alle app desktop di accedere alla fotocamera».'
+      :n==='NotFoundError'?'Nessuna fotocamera trovata.'
+      :n==='NotReadableError'||n==='AbortError'?'La fotocamera è già usata da un’altra app (Fotocamera, Teams, Zoom…): chiudila e riprova.'
+      :'Fotocamera non disponibile ('+(n||'errore')+').');
+    return;
+  }
+  try{
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');cam.devs=devs;
+    const tr=cam.stream.getVideoTracks()[0],curId=tr&&tr.getSettings().deviceId,lab=(tr&&tr.label)||'';
+    $('#camSwitch').hidden=devs.length<2;
+    if(!cam.deviceId&&!cam.autoTried&&cam.facing==='environment'&&devs.length>1){
+      cam.autoTried=true;
+      const BACK=/back|rear|world|environment|posterior|arrière|rück/i,FRONT=/front|user|facing|anterior|avant|integrated|webcam/i;
+      const rear=devs.find(d=>BACK.test(d.label));
+      if(rear&&rear.deviceId!==curId&&!BACK.test(lab)){cam.deviceId=rear.deviceId;return startCam()}
+      if(!rear&&FRONT.test(lab)){const o=devs.find(d=>d.deviceId!==curId);if(o){cam.deviceId=o.deviceId;return startCam()}}
+    }
+    cam.curId=curId;
+  }catch(e){}
+  scEl.video.srcObject=cam.stream;$('#camShoot').disabled=false;$('#camSwitch').disabled=false;
+  if(cam.stage==='live')scStage('live');
 }
 function camError(m){$('#camErrTxt').textContent=m+' Puoi scattare o scegliere una foto:';scEl.err.hidden=false;scEl.video.hidden=true;scEl.guide.hidden=true;$('#camShoot').disabled=true;$('#camSwitch').disabled=true}
 function stopCam(){if(cam.stream){cam.stream.getTracks().forEach(t=>t.stop());cam.stream=null}}
@@ -1425,7 +1450,12 @@ function updateSel(){
 function setDest(d){cam.dest=d;$$('#scDest button').forEach(b=>b.classList.toggle('on',b.dataset.dest===d));if(cam.lines)updateSelSafe()}
 function updateSelSafe(){if(cam.stage==='select')updateSel()}
 $('#scanBtn').onclick=openCam;$('#scanBtn2').onclick=openCam;$('#camClose').onclick=closeCam;
-$('#camSwitch').onclick=()=>{cam.facing=cam.facing==='environment'?'user':'environment';startCam()};
+$('#camSwitch').onclick=()=>{
+  const d=cam.devs||[];
+  if(d.length>1){const i=d.findIndex(x=>x.deviceId===cam.curId);cam.deviceId=d[(i+1)%d.length].deviceId;store.set('pdf-dsa-camdev',cam.deviceId)} // passa alla fotocamera successiva e la ricorda
+  else{cam.deviceId=null;cam.facing=cam.facing==='environment'?'user':'environment'}
+  startCam();
+};
 $('#camShoot').onclick=()=>{const f=grabFrame();if(f)setPhoto(f);else toast('Fotocamera non ancora pronta')};
 $$('.photoIn').forEach(inp=>inp.onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   try{setPhoto(await toCanvas(await loadPhoto(f)))}catch(err){toast('⚠️ '+err.message)}});
@@ -2101,7 +2131,7 @@ $('#pasteNo').onclick=()=>$('#pasteBar').hidden=true;
 const STANDALONE=navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
 document.body.classList.toggle('standalone',STANDALONE);
 let quickCanvas=null;
-function quickShoot(){$('#quickCam').click()}           // apre subito la fotocamera di sistema (nessuna finestra intermedia)
+function quickShoot(){if(TOUCH)$('#quickCam').click();else openCam()} // iPad/telefono: fotocamera di sistema; computer e 2 in 1 Windows: fotocamera nella pagina           // apre subito la fotocamera di sistema (nessuna finestra intermedia)
 function quickUi(st,msg){
   $('#quickOv').hidden=st==='off';$('#quickSpin').hidden=st!=='busy';$('#quickAct').hidden=st!=='fail';
   if(msg)$('#quickTxt').textContent=msg;
