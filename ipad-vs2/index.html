@@ -1622,13 +1622,18 @@ applyDsa();
 const LANGS={it:'Italiano',fr:'Français',de:'Deutsch',en:'English'};
 const PREF_REGION={it:'it-it',fr:'fr-fr',de:'de-de',en:'en-gb'};
 const STOP={
-  it:'e lo gli di che è per non una uno del della sul sulla al ai nei negli tra fra col dei delle degli sono con nel nella nelle alla alle anche come più questo questa questi ma ha hanno perché quando molto essere già dove cosa tutto loro',
+  it:'e lo gli di che è per non una uno del della sul sulla al ai nei negli tra fra col dei delle degli sono con nel nella nelle alla alle anche come più questo questa questi ma ha hanno perché quando molto essere già dove cosa tutto loro i da ci cui poi però solo sempre ancora quella quello quelli molti ogni',
   fr:'suis mon mes ton tes les et est une pas que qui pour dans sur avec ce cette elle nous vous sont au aux je mais très où ça leur était être avoir fait comme tout plus ont sa ses',
   de:'habe bin bist hast mein meine dein deine der die das und ist nicht ein eine einen ich er sie es wir zu mit auf für den dem von im sind auch wie aber kein keine noch schon oder wenn sich bei nach aus ihr hat haben',
-  en:'i am the and is are of to it that you he she we they this with for not be have has were what my your does can will would there their from which an at by'
+  en:'am the and is are of to it that you he she we they this with for not be have has were what my your does can will would there their from which an at by'
 };
 const STOPS={};for(const k in STOP)STOPS[k]=new Set(STOP[k].split(' '));
-function detectLang(t,fallback){
+// lingua di una singola frase: diversa da quella del paragrafo solo se le prove sono chiare
+function strongLang(t,para){
+  const words=t.toLowerCase().match(/[\p{L}’']+/gu)||[];if(words.length<4)return null;
+  const l=detectLang(t,null,3,2);return l&&l!==para?l:null;
+}
+function detectLang(t,fallback,minS=1.5,minGap=1){
   const words=t.toLowerCase().match(/[\p{L}’']+/gu)||[];
   if(words.length<3)return fallback;
   const sc={it:0,fr:0,de:0,en:0};
@@ -1638,7 +1643,7 @@ function detectLang(t,fallback){
   sc.it+=(t.match(/\b(gli|dell|nell|dall|sull)['’]?|[ìò]/gi)||[]).length*.5;
   sc.en+=(t.match(/\b\w+['’](s|t|re|ll|ve)\b/gi)||[]).length*.8;
   const best=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
-  if(sc[best[0]]<1.5||sc[best[0]]-sc[best[1]]<1)return fallback;
+  if(sc[best[0]]<minS||sc[best[0]]-sc[best[1]]<minGap)return fallback;
   return best[0];
 }
 S.tts=Object.assign({lang:'auto',rate:1,voice:{}},store.get('pdf-dsa-tts',{}));
@@ -1681,6 +1686,7 @@ function syncTtsUi(){
 /* motore di lettura riutilizzabile (editor e modalità Lettura) */
 
 let activeReader=null;
+const st0cps={}; // velocità misurata di ogni voce (caratteri al secondo), per le voci senza eventi di parola
 function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), skipSec}
   let st=null;
   function buildMap(){
@@ -1728,34 +1734,60 @@ function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), s
       while(a>0&&/[\p{L}\p{N}'’]/u.test(map.text[a-1]))a--;
       if(a>=map.text.trim().length&&range.collapsed)a=0;
     }
-    const chunks=[],re=/[^.!?;:\n]+[.!?;:…]*["»”’)]*[ \t]*/g;
+    // frasi (solo . ! ? …), poi unite in blocchi più lunghi della stessa lingua: meno pause tra un pezzo e l'altro
+    const chunks=[],re=/[^.!?…\n]+[.!?…]*["»”’)]*[ \t]*/g,MAXC=260;
     for(const p of map.paras){
       if(p.e<=a||p.s>=b)continue;const s0=Math.max(a,p.s),e0=Math.min(b,p.e),part=map.text.slice(s0,e0);let m;re.lastIndex=0;
-      while((m=re.exec(part))){if(m[0].trim())chunks.push({t:m[0],s:s0+m.index,lang:S.tts.lang!=='auto'?S.tts.lang:detectLang(m[0],p.lang)})} // frase per frase, il paragrafo fa da riserva
+      while((m=re.exec(part))){if(!m[0].trim())continue;
+        const lang=S.tts.lang!=='auto'?S.tts.lang:(strongLang(m[0],p.lang)||p.lang); // la frase cambia lingua solo con prove chiare
+        const last=chunks[chunks.length-1];
+        if(last&&last.p===p&&last.lang===lang&&last.t.length+m[0].length<=MAXC)last.t+=m[0];
+        else chunks.push({t:m[0],s:s0+m.index,lang,p});
+      }
     }
     if(!chunks.length){toast('Niente da leggere da questo punto');return false}
     speechSynthesis.cancel();
-    st={map,chunks,i:0,paused:false,word:a,lang:chunks[0].lang,boundaryOK:false,timer:null,t0:0,pausedAt:0,pausedFor:0};
-    state();speakNext();return true;
+    st={map,chunks,cur:-1,q:-1,paused:false,word:a,lang:chunks[0].lang,timer:null,t0:0,pausedAt:0,pausedFor:0,bOK:{},cps:st0cps};
+    state();setTimeout(()=>enqueue(0),speechSynthesis.speaking?120:0);return true;
   }
   function wordLen(map,i){const m=map.text.slice(i).match(/^[\p{L}\p{N}'’-]+/u);return m?m[0].length:1}
   function showWord(i,len){if(!st)return;st.word=i;const r=rangeOf(st.map,i,i+(len||wordLen(st.map,i)));mark('tts-word',r);keepVisible(r)}
-  function speakNext(){
-    if(!st)return;if(st.i>=st.chunks.length){stop(false,true);return}
-    const c=st.chunks[st.i++],u=new SpeechSynthesisUtterance(c.t),v=bestVoice(c.lang);
+  // Il pezzo successivo viene messo in coda appena inizia quello attuale: il browser passa dall'uno all'altro senza pause.
+  // L'evidenziazione segue gli eventi «parola» della voce; se la voce non li manda, si stima sul tempo,
+  // con una velocità che si corregge da sola misurando quanto dura ogni pezzo letto.
+  function enqueue(k){
+    if(!st||k>=st.chunks.length||k<=st.q)return;st.q=k;const S0=st;
+    const c=st.chunks[k],u=new SpeechSynthesisUtterance(c.t),v=bestVoice(c.lang),vk=v?v.name:c.lang;
     if(v){u.voice=v;u.lang=v.lang}else u.lang=PREF_REGION[c.lang];u.rate=S.tts.rate;
-    if(st.lang!==c.lang){st.lang=c.lang;state()}
-    mark('tts-sent',rangeOf(st.map,c.s,c.s+c.t.trimEnd().length));
-    const words=[...c.t.matchAll(/[\p{L}\p{N}'’-]+/gu)].map(w=>({o:c.s+w.index,l:w[0].length,rel:w.index}));
-    if(words[0])showWord(words[0].o,words[0].l);
-    u.onboundary=e=>{if(e.name&&e.name!=='word')return;if(!st)return;st.boundaryOK=true;clearInterval(st.timer);const w=words.find(x=>x.rel>=e.charIndex)||words[words.length-1];if(w)showWord(w.o,w.l)};
-    u.onstart=()=>{ // voci senza eventi di parola (es. Google): avanzamento stimato sul tempo
-      if(!st||st.boundaryOK||words.length<2)return;
-      st.t0=performance.now();st.pausedFor=0;const cps=14.5*u.rate,total=c.t.length;
-      clearInterval(st.timer);st.timer=setInterval(()=>{if(!st||st.paused||st.boundaryOK)return;const pos=Math.min(total,(performance.now()-st.t0-st.pausedFor)/1000*cps);let w=words[0];for(const x of words){if(x.rel<=pos)w=x;else break}if(w&&w.o!==st.word)showWord(w.o,w.l)},90);
+    // per la stima: le pause della voce dopo virgole e punti valgono qualche carattere in più
+    const pw=i=>{const pre=c.t.slice(0,i);return i+4*(pre.match(/[,;:]/g)||[]).length+8*(pre.match(/[.!?…]/g)||[]).length};
+    const words=[...c.t.matchAll(/[\p{L}\p{N}'’-]+/gu)].map(w=>({o:c.s+w.index,l:w[0].length,rel:w.index,eff:pw(w.index)}));
+    const effTot=pw(c.t.trimEnd().length);
+    let gotB=false;
+    const mine=()=>st===S0&&st.cur===k;
+    u.onstart=()=>{
+      if(st!==S0)return;st.cur=k;st.t0=performance.now();st.pausedFor=0;
+      if(st.lang!==c.lang){st.lang=c.lang;state()}
+      mark('tts-sent',rangeOf(st.map,c.s,c.s+c.t.trimEnd().length));
+      if(words[0])showWord(words[0].o,words[0].l);
+      clearInterval(st.timer);
+      if(!st.bOK[vk]&&words.length>1){
+        st.timer=setInterval(()=>{if(!mine()||st.paused||gotB)return;const cps=(st.cps[vk]||14.5)*u.rate;
+          const pos=(performance.now()-st.t0-st.pausedFor)/1000*cps;let w=words[0];for(const x of words){if(x.eff<=pos)w=x;else break}
+          if(pos<effTot+20&&w.o!==st.word)showWord(w.o,w.l)},80);
+      }
+      enqueue(k+1);
     };
-    u.onend=()=>{if(st){clearInterval(st.timer);speakNext()}};
-    u.onerror=e=>{if(e.error==='interrupted'||e.error==='canceled')return;if(st){clearInterval(st.timer);speakNext()}};
+    u.onboundary=e=>{if(e.name&&e.name!=='word')return;if(!mine())return;gotB=true;st.bOK[vk]=true;clearInterval(st.timer);
+      let w=words[0];for(const x of words){if(x.rel<=e.charIndex+1)w=x;else break}if(w&&w.o!==st.word)showWord(w.o,w.l)};
+    const end=()=>{
+      if(!mine())return;clearInterval(st.timer);
+      const dur=(performance.now()-st.t0-st.pausedFor)/1000;
+      if(!gotB&&dur>.8&&c.t.length>25){const real=effTot/dur/u.rate;st0cps[vk]=st.cps[vk]=st.cps[vk]?st.cps[vk]*.4+real*.6:real}
+      if(k>=st.chunks.length-1)stop(false,true);
+    };
+    u.onend=end;
+    u.onerror=e=>{if(e.error==='interrupted'||e.error==='canceled')return;if(st===S0&&st.cur<k)st.cur=k;end();if(st===S0&&k<st.chunks.length-1&&st.cur===k)enqueue(k+1)};
     speechSynthesis.speak(u);
   }
   function stop(silent,done){
