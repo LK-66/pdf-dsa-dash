@@ -316,6 +316,8 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .penmodal{width:min(860px,100%)}
 .pentxt{width:100%;min-height:52vh;border:1px solid var(--line);border-radius:12px;padding:6px 16px;font-size:24px;line-height:48px;resize:vertical;font-family:var(--f-body);color:var(--ink);
   background:#fffef8 repeating-linear-gradient(to bottom,transparent 0,transparent 47px,#cfe0f3 47px,#cfe0f3 48px);background-attachment:local}
+.vrow{display:grid;grid-template-columns:90px 1fr auto;gap:8px;align-items:center;margin:6px 0}
+.vrow b{font-size:15px}.vrow select{padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px;min-width:0;background:var(--paper);color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,10px);background:var(--ink);color:#fff;padding:9px 14px;border-radius:8px;font-size:14px;z-index:60;opacity:0;transition:.2s;pointer-events:none;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -474,6 +476,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
         <select id="ttsRate" title="Velocità"><option value="0.7">Lenta</option><option value="0.85">Calma</option><option value="1">Normale</option><option value="1.2">Veloce</option></select>
         <select class="ttsLangSel" title="Lingua della voce: auto la riconosce paragrafo per paragrafo"><option value="auto">Lingua: auto</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="en">English</option></select>
         <select id="ttsVoice" title="Voce" hidden></select>
+        <button class="btn sm vBtn" title="Scegli la voce per ogni lingua"><i data-i="volume"></i> Voci</button>
         <span class="langbadge" id="ttsBadge" hidden title="Lingua che sta leggendo"></span>
       </div>
       <div class="pastebar" id="pasteBar" hidden>
@@ -548,7 +551,8 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
           <li>Apri l'app <b>Comandi</b> e tocca <b>+</b> (nuovo comando). Chiamalo esattamente <b>Testo DSA</b>.</li>
           <li>Aggiungi l'azione <b>«Scatta foto»</b> (lascia attiva l'anteprima della fotocamera).</li>
           <li>Aggiungi l'azione <b>«Estrai testo dall'immagine»</b>.</li>
-          <li>Aggiungi l'azione <b>«Copia negli appunti»</b>. Fatto.</li>
+          <li>Aggiungi l'azione <b>«Copia negli appunti»</b>.</li>
+          <li><b>Per l'inserimento automatico</b>: nel campo di ricerca delle azioni scrivi <b>output</b> e aggiungi in fondo l'azione per terminare il comando con un output (in inglese «Stop and Output»), impostata su <b>Testo</b>. Così il testo entra nell'editor da solo, senza incollare.</li>
         </ol>
         <p class="hint">La prima volta l'iPad chiede di consentire la fotocamera al comando, e Safari chiede se aprire «Comandi»: rispondi sì.</p>
       </details>
@@ -593,6 +597,17 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <button class="btn" id="scBack">‹ Ritaglio</button><button class="btn scRetry"><i data-i="camera"></i> Rifai</button>
       <span class="spacer"></span>
       <button class="btn primary" id="camOk"><i data-i="check"></i> Inserisci</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="vOv" hidden>
+  <div class="modal" role="dialog" aria-label="Voci">
+    <div class="mh"><h3><i data-i="volume"></i> Voci per lingua</h3><button class="btn icon" data-close="vOv"><i data-i="x"></i></button></div>
+    <div class="mb">
+      <p class="hint">In cima ci sono le voci migliori di questo browser («naturale» = voci neurali di Edge, «Google» = voci di Chrome). La scelta resta salvata. Con «Lingua: auto» ogni frase usa la voce della sua lingua.</p>
+      <div id="vRows"></div>
+      <p class="hint" id="vNote"></p>
     </div>
   </div>
 </div>
@@ -671,6 +686,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <button data-r="0.7">Lenta</button><button data-r="0.85">Calma</button><button data-r="1">Normale</button><button data-r="1.2">Veloce</button>
     </div>
     <select class="rsel ttsLangSel" title="Lingua della voce"><option value="auto">Lingua: auto</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="en">English</option></select>
+    <button class="rb vBtn" title="Scegli la voce per ogni lingua">Voci</button>
     <span class="langbadge" id="rBadge" hidden></span>
     <span class="spacer"></span>
     <button class="rb" id="readMinus" aria-label="Testo più piccolo">A−</button>
@@ -1620,6 +1636,16 @@ function fillVoiceSel(){
   const list=voicesFor(lang);sel.innerHTML=list.map(v=>`<option value="${esc(v.name)}">${esc(vLabel(v))}</option>`).join('');
   const b=bestVoice(lang);if(b)sel.value=b.name;sel.hidden=list.length<2;
 }
+const SAMPLE={it:'Ciao, questa è la voce che leggerà i testi in italiano.',fr:'Bonjour, voici la voix qui lira les textes en français.',de:'Hallo, das ist die Stimme für die deutschen Texte.',en:'Hello, this is the voice that will read English texts.'};
+function renderVoices(){
+  $('#vRows').innerHTML=Object.keys(LANGS).map(l=>{const list=voicesFor(l),b=bestVoice(l);
+    return`<div class="vrow"><b>${LANGS[l]}</b>${list.length?`<select data-l="${l}">${list.map(v=>`<option value="${esc(v.name)}"${b&&b.name===v.name?' selected':''}>${esc(vLabel(v))}${/Natural|Online|Neural/i.test(v.name)?'':''}</option>`).join('')}</select><button class="btn sm" data-try="${l}">${ic('play')} Prova</button>`:'<span class="hint">nessuna voce in questo browser</span><span></span>'}</div>`}).join('');
+  const nat=VOICES.some(v=>/Natural|Online/i.test(v.name));
+  $('#vNote').textContent=nat?'':'Le voci «naturali» di Microsoft ci sono solo in Microsoft Edge (Windows o Mac). In Chrome usa le voci Google, su iPad le voci di Apple.';
+}
+$$('.vBtn').forEach(b=>{b.addEventListener('mousedown',e=>e.preventDefault());b.onclick=()=>{VOICES=speechSynthesis.getVoices();renderVoices();$('#vOv').hidden=false}});
+$('#vRows').addEventListener('change',e=>{const s=e.target.closest('select');if(!s)return;S.tts.voice[s.dataset.l]=s.value;saveTts();fillVoiceSel()});
+$('#vRows').addEventListener('click',e=>{const b=e.target.closest('[data-try]');if(!b)return;const l=b.dataset.try,v=bestVoice(l);speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(SAMPLE[l]);if(v){u.voice=v;u.lang=v.lang}else u.lang=PREF_REGION[l];u.rate=S.tts.rate;speechSynthesis.speak(u)});
 function syncTtsUi(){
   $$('.ttsLangSel').forEach(s=>s.value=S.tts.lang);$('#ttsRate').value=String(S.tts.rate);
   $$('#rRate button').forEach(b=>b.classList.toggle('on',+b.dataset.r===S.tts.rate));fillVoiceSel();
@@ -1949,8 +1975,12 @@ $('#qImport').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)ret
   const d=qGet(qCur);
   if(d){editor.innerHTML=d.html||'';updateDub()}
   else{const old=store.get('pdf-dsa-editor',null);if(old&&old.html&&!editor.textContent.trim()){editor.innerHTML=old.html;updateDub()}}
-  qTitle();let t=null;
-  new MutationObserver(()=>{clearTimeout(t);t=setTimeout(qStore,500)}).observe(editor,{childList:true,subtree:true,characterData:true});
+  qTitle();let t=null,dirty=false;
+  new MutationObserver(()=>{dirty=true;clearTimeout(t);t=setTimeout(()=>{qStore();dirty=false},500)}).observe(editor,{childList:true,subtree:true,characterData:true});
+  // un'altra scheda (es. aperta dal comando rapido) può aver salvato un testo più nuovo: lo riprendo
+  const sync=()=>{if(document.visibilityState!=='visible'||dirty)return;const Q2=store.get(QK,null);if(!Array.isArray(Q2))return;const c2=store.get(QC,qCur),d2=Q2.find(x=>x.id===c2);
+    Q=Q2;if(d2&&(c2!==qCur||d2.html!==editor.innerHTML)){qCur=c2;editor.innerHTML=d2.html||'';updateDub();qTitle()}};
+  document.addEventListener('visibilitychange',sync);window.addEventListener('pageshow',sync);window.addEventListener('focus',sync);
   window.addEventListener('pagehide',qStore);
 })();
 
