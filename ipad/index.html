@@ -297,6 +297,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .pastebar .btn.primary{min-height:44px;font-size:16px}
 .v3 #saveAnn,.v3 #savedList{display:none!important}
 .qname{border:1px dashed var(--line);background:var(--bg);border-radius:8px;padding:5px 10px;font-weight:700;color:var(--navy);cursor:pointer;max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.qname.dirty::after{content:' ●';color:#d9730d}
 .qname:hover{border-color:var(--green);color:var(--green)}
 .qmodal{width:min(720px,100%)}
 .qin{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:15px;min-width:0;flex:1 1 160px;background:var(--paper);color:var(--ink)}
@@ -480,7 +481,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
         <span class="langbadge" id="ttsBadge" hidden title="Lingua che sta leggendo"></span>
       </div>
       <div class="pastebar" id="pasteBar" hidden>
-        <span><b>Testo scansionato pronto</b> · tocca per inserirlo</span>
+        <span><b>Testo scansionato pronto</b> · tocca «Incolla nell’editor», poi «Incolla»</span>
         <span class="spacer"></span>
         <button class="btn primary" id="pasteGo"><i data-i="copy"></i> Incolla nell'editor</button>
         <button class="btn icon" id="pasteNo" aria-label="Chiudi"><i data-i="x"></i></button>
@@ -489,6 +490,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <div class="editor" id="editor" contenteditable="true" spellcheck="false" data-ph="Importa testo dal PDF, copia una selezione o scansiona una pagina…" aria-label="Testo dell'editor"></div></div>
       <div class="row">
         <button class="btn" id="saveAnn"><i data-i="save"></i> Salva</button>
+        <button class="btn primary" id="qSaveBtn" title="Salva questo testo nel quaderno"><i data-i="save"></i> Salva</button>
         <button class="btn" id="expWord"><i data-i="filedown"></i> Word</button>
         <button class="btn" id="expEdPdf"><i data-i="filedown"></i> PDF</button>
         <button class="btn" id="aiBtn" title="Correggi gli errori dell’OCR con Copilot o Claude"><i data-i="spark"></i> Correggi con IA</button>
@@ -545,14 +547,14 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
     <div class="sc-apple" id="scAppleBox" hidden>
       <p class="sc-lead">Il riconoscimento di Apple è molto preciso e raddrizza la pagina da solo.</p>
       <button class="btn primary sc-big" id="appleShortcut"><i data-i="camera"></i> Scatta e riconosci con Apple</button>
-      <p class="hint sc-hint">Apre la fotocamera con il Comando rapido <b>«Testo DSA»</b>: scatti, il testo viene copiato, torni qui toccando <b>‹ Safari</b> in alto a sinistra e premi <b>«Incolla nell’editor»</b>.</p>
+      <p class="hint sc-hint">Apre la fotocamera con il Comando rapido <b>«Testo DSA»</b>: scatti, il testo viene copiato, torni qui toccando <b>‹ Safari</b> in alto a sinistra (stessa scheda) e premi <b>«Incolla nell’editor»</b>, poi «Incolla».</p>
       <details class="sc-how"><summary><b>Prima volta: crea il Comando rapido «Testo DSA»</b> (2 minuti)</summary>
         <ol>
           <li>Apri l'app <b>Comandi</b> e tocca <b>+</b> (nuovo comando). Chiamalo esattamente <b>Testo DSA</b>.</li>
           <li>Aggiungi l'azione <b>«Scatta foto»</b> (lascia attiva l'anteprima della fotocamera).</li>
           <li>Aggiungi l'azione <b>«Estrai testo dall'immagine»</b>.</li>
           <li>Aggiungi l'azione <b>«Copia negli appunti»</b>.</li>
-          <li><b>Per l'inserimento automatico</b>: nel campo di ricerca delle azioni scrivi <b>output</b> e aggiungi in fondo l'azione per terminare il comando con un output (in inglese «Stop and Output»), impostata su <b>Testo</b>. Così il testo entra nell'editor da solo, senza incollare.</li>
+
         </ol>
         <p class="hint">La prima volta l'iPad chiede di consentire la fotocamera al comando, e Safari chiede se aprire «Comandi»: rispondi sì.</p>
       </details>
@@ -621,7 +623,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
         <div class="row">
           <input class="qin" id="qMat" list="qMaterie" placeholder="Materia (es. Geografia)" autocomplete="off">
           <input class="qin qtit" id="qTit" placeholder="Titolo (es. I fiumi)" autocomplete="off">
-          <button class="btn primary" id="qRename"><i data-i="check"></i> Salva nome</button>
+          <button class="btn primary" id="qRename"><i data-i="save"></i> Salva nel quaderno</button>
         </div>
       </div>
       <div class="row">
@@ -1415,8 +1417,8 @@ $('#appleBack').onclick=()=>scStage('start');
 const SHORTCUT='Testo DSA';
 $('#appleShortcut').onclick=()=>{
   store.set('pdf-dsa-shortcut',Date.now());
-  const base=location.href.split('#')[0];
-  location.href='shortcuts://x-callback-url/run-shortcut?name='+encodeURIComponent(SHORTCUT)+'&x-success='+encodeURIComponent(base+'#incolla')+'&x-cancel='+encodeURIComponent(base+'#annullato')+'&x-error='+encodeURIComponent(base+'#errore');
+  if(window.saveScanDraft)saveScanDraft();              // se Safari ricarica la scheda mentre sei nella fotocamera, il testo non si perde
+  location.href='shortcuts://run-shortcut?name='+encodeURIComponent(SHORTCUT); // senza indirizzo di ritorno: si torna con «‹ Safari», nella stessa scheda
 };
 function backFromShortcut(res){
   store.set('pdf-dsa-shortcut',0);
@@ -1921,67 +1923,77 @@ document.addEventListener('keydown',e=>{
 
 readUi({playing:false});
 $$('.ocrLangSel').forEach(sl=>{sl.value=S.ocrLang;sl.onchange=e=>setOcrLang(e.target.value)});
-/* ───────── Quaderni: tanti testi salvati per materia (in questo browser) ─────────
-   Il testo aperto si salva da solo mentre lavori; dai un nome con Materia › Titolo. */
-const QK='pdf-dsa-quaderni',QC='pdf-dsa-quaderno-attivo';
+/* ───────── Quaderni: testi salvati per materia (in questo browser) ─────────
+   Si salva SOLO con «Salva»: ricaricando la pagina l'editor riparte vuoto,
+   i testi salvati restano nei Quaderni. */
+const QK='pdf-dsa-quaderni';
 const MATERIE=['Italiano','Francese','Tedesco','Inglese','Matematica','Scienze','Storia','Geografia','Educazione civica','Altro'];
-let Q=store.get(QK,[]),qCur=store.get(QC,null),qDelArm=null;
+let Q=store.get(QK,[]),qCur=null,qDirty=false,qDelArm=null,qLeaveArm=null,qLoading=false;
 const qGet=id=>Q.find(d=>d.id===id);
-function qPersist(){if(!store.set(QK,Q))toast('Spazio del browser pieno: esporta i quaderni in un file (Quaderni › Esporta)');store.set(QC,qCur)}
-function qTitle(){const d=qGet(qCur);$('#qName').textContent=d?`${d.materia} › ${d.titolo}`:'Senza titolo · dai un nome'}
-function qStore(){
+function qPersist(){if(!store.set(QK,Q)){toast('Spazio del browser pieno: esporta i quaderni in un file (Quaderni › Esporta)');return false}return true}
+function qTitle(){const d=qGet(qCur);const n=$('#qName');n.textContent=d?`${d.materia} › ${d.titolo}`:(editor.textContent.trim()?'Non salvato · Salva':'Nuovo testo');n.classList.toggle('dirty',qDirty&&!!editor.textContent.trim())}
+function setEditor(html){qLoading=true;editor.innerHTML=html||'';updateDub();editor.scrollTop=0;setTimeout(()=>{qLoading=false},0)}
+function qSaveNow(m,t){
   let d=qGet(qCur);
-  if(!d){if(!editor.textContent.trim())return;d={id:uid(),materia:'Altro',titolo:'Senza titolo',html:'',created:Date.now()};Q.push(d);qCur=d.id}
-  d.html=editor.innerHTML;d.updated=Date.now();qPersist();qTitle();
+  if(!d){d={id:uid(),created:Date.now()};Q.push(d);qCur=d.id}
+  d.materia=m||d.materia||'Altro';d.titolo=t||d.titolo||'Senza titolo';d.html=editor.innerHTML;d.updated=Date.now();
+  if(qPersist()){qDirty=false;qTitle();return true}return false;
 }
-function qOpen(id){qStore();const d=qGet(id);if(!d)return;if(edReader)edReader.stop(true);qCur=id;editor.innerHTML=d.html||'';qPersist();qTitle();updateDub();editor.scrollTop=0}
-function qNew(){qStore();const prev=qGet(qCur);const d={id:uid(),materia:prev?prev.materia:'Altro',titolo:'Nuovo testo',html:'',created:Date.now(),updated:Date.now()};Q.push(d);qCur=d.id;editor.innerHTML='';qPersist();qTitle();updateDub();qFill();renderQ();setTimeout(()=>{$('#qTit').select()},50)}
+// cambio testo con modifiche non salvate: secondo tocco per confermare
+function qGuard(key,go){if(qDirty&&editor.textContent.trim()&&qLeaveArm!==key){qLeaveArm=key;toast('Modifiche non salvate: premi «Salva», oppure tocca di nuovo per continuare senza salvare');return}qLeaveArm=null;go()}
+function qOpen(id){const d=qGet(id);if(!d)return;if(edReader)edReader.stop(true);qCur=id;setEditor(d.html);qDirty=false;qTitle()}
+function qNew(){if(edReader)edReader.stop(true);qCur=null;setEditor('');qDirty=false;qTitle();qFill();renderQ()}
 function qFill(){const d=qGet(qCur);$('#qMat').value=d?d.materia:'';$('#qTit').value=d?d.titolo:''}
 function renderQ(){
   const f=$('#qFind').value.trim().toLowerCase();
   $('#qMaterie').innerHTML=[...new Set([...MATERIE,...Q.map(d=>d.materia)])].map(m=>`<option value="${esc(m)}">`).join('');
   const list=Q.filter(d=>!f||(d.materia+' '+d.titolo+' '+(d.html||'').replace(/<[^>]+>/g,' ')).toLowerCase().includes(f)).sort((a,b)=>a.materia.localeCompare(b.materia)||(b.updated||0)-(a.updated||0));
-  if(!list.length){$('#qList').innerHTML=`<p class="qempty">${Q.length?'Nessun testo trovato.':'Ancora nessun testo salvato. Il testo che scrivi si salva da solo: dagli un nome qui sopra.'}</p>`;return}
+  if(!list.length){$('#qList').innerHTML=`<p class="qempty">${Q.length?'Nessun testo trovato.':'Ancora nessun testo salvato. Scrivi materia e titolo qui sopra e premi «Salva nel quaderno».'}</p>`;return}
   const groups={};list.forEach(d=>(groups[d.materia]=groups[d.materia]||[]).push(d));
   $('#qList').innerHTML=Object.entries(groups).map(([m,ds])=>`<div class="qgrp"><h4>${esc(m)}</h4>${ds.map(d=>{
     const prev=(d.html||'').replace(/<div class="sec">.*?<\/div>/g,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim().slice(0,90);
     const dt=d.updated?new Date(d.updated).toLocaleDateString('it-CH',{day:'numeric',month:'short'}):'';
     return`<div class="qitem${d.id===qCur?' cur':''}"><button class="qopen" data-id="${d.id}"><b>${esc(d.titolo)}${d.id===qCur?' · aperto':''}</b><small>${esc(dt)}${prev?' · '+esc(prev):''}</small></button><button class="btn sm icon qdel" data-del="${d.id}" title="Elimina">${ic('trash')}</button></div>`}).join('')}</div>`).join('');
 }
-function openQ(){qStore();qFill();qDelArm=null;$('#qFind').value='';renderQ();$('#qOv').hidden=false}
+function openQ(){qFill();qDelArm=null;qLeaveArm=null;$('#qFind').value='';renderQ();$('#qOv').hidden=false}
 $('#qBtn').onclick=openQ;$('#qName').onclick=openQ;
 $('#qFind').oninput=renderQ;
-$('#qNew').onclick=qNew;
+$('#qNew').onclick=()=>qGuard('new',qNew);
 $('#qRename').onclick=()=>{
+  if(!editor.textContent.trim()){toast('L’editor è vuoto: non c’è niente da salvare');return}
   const m=$('#qMat').value.trim()||'Altro',t=$('#qTit').value.trim()||'Senza titolo';
-  let d=qGet(qCur);if(!d){d={id:uid(),created:Date.now(),html:editor.innerHTML};Q.push(d);qCur=d.id}
-  d.materia=m;d.titolo=t;d.html=editor.innerHTML;d.updated=Date.now();qPersist();qTitle();renderQ();toast(`✓ Salvato in ${m} › ${t}`);
+  if(qSaveNow(m,t)){renderQ();toast(`✓ Salvato in ${m} › ${t}`)}
 };
 [$('#qMat'),$('#qTit')].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#qRename').click()}}));
+// «Salva»: se il testo ha già un nome salva subito, altrimenti chiede materia e titolo
+function quickSave(){
+  if(!editor.textContent.trim()){toast('L’editor è vuoto: non c’è niente da salvare');return}
+  if(qGet(qCur)){if(qSaveNow())toast('✓ Salvato in '+$('#qName').textContent)}
+  else{openQ();setTimeout(()=>$('#qMat').focus(),60);toast('Scegli materia e titolo, poi «Salva nel quaderno»')}
+}
+$('#qSaveBtn').onclick=quickSave;
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();quickSave()}});
 $('#qList').onclick=e=>{
   const o=e.target.closest('.qopen'),dl=e.target.closest('[data-del]');
-  if(o){qOpen(o.dataset.id);$('#qOv').hidden=true;toast('Aperto: '+$('#qName').textContent);return}
+  if(o){const id=o.dataset.id;if(id===qCur){$('#qOv').hidden=true;return}qGuard('open'+id,()=>{qOpen(id);$('#qOv').hidden=true;toast('Aperto: '+$('#qName').textContent)});return}
   if(dl){const id=dl.dataset.del;
     if(qDelArm!==id){qDelArm=id;$$('.qdel').forEach(b=>b.classList.toggle('armed',b.dataset.del===id));toast('Tocca di nuovo il cestino per eliminare');return}
-    Q=Q.filter(d=>d.id!==id);qDelArm=null;
-    if(id===qCur){const next=[...Q].sort((a,b)=>(b.updated||0)-(a.updated||0))[0];qCur=next?next.id:null;editor.innerHTML=next?next.html:'';updateDub()}
-    qPersist();qTitle();qFill();renderQ();toast('Testo eliminato')}
+    Q=Q.filter(d=>d.id!==id);qDelArm=null;if(id===qCur){qCur=null;qDirty=true}
+    qPersist();qTitle();qFill();renderQ();toast('Testo eliminato dal quaderno')}
 };
-$('#qExport').onclick=()=>{qStore();download(new Blob([JSON.stringify({app:'PDF DSA iPad',quaderni:Q,data:new Date().toISOString()},null,1)],{type:'application/json'}),`quaderni-dsa-${new Date().toISOString().slice(0,10)}.json`);toast('Backup dei quaderni scaricato')};
+$('#qExport').onclick=()=>{download(new Blob([JSON.stringify({app:'PDF DSA iPad',quaderni:Q,data:new Date().toISOString()},null,1)],{type:'application/json'}),`quaderni-dsa-${new Date().toISOString().slice(0,10)}.json`);toast('Backup dei quaderni scaricato')};
 $('#qImport').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);const arr=Array.isArray(d)?d:d.quaderni;if(!Array.isArray(arr))throw 0;let n=0;
   arr.forEach(x=>{if(!x||!x.id)return;const i=Q.findIndex(y=>y.id===x.id);if(i<0){Q.push(x);n++}else if((x.updated||0)>(Q[i].updated||0)){Q[i]=x;n++}});qPersist();renderQ();toast(`Importati ${n} testi`)}catch(err){toast('File di backup non valido')}};r.readAsText(f)};
-// avvio: riapre il testo attivo (o il testo salvato dalle versioni precedenti); salvataggio automatico
+// bozza di sicurezza SOLO durante la scansione con il comando rapido (sessionStorage: resta in questa scheda)
+window.saveScanDraft=()=>{try{sessionStorage.setItem('dsa-scan-draft',JSON.stringify({html:editor.innerHTML,qCur,qDirty,ts:Date.now()}))}catch(e){}};
 (()=>{
-  const d=qGet(qCur);
-  if(d){editor.innerHTML=d.html||'';updateDub()}
-  else{const old=store.get('pdf-dsa-editor',null);if(old&&old.html&&!editor.textContent.trim()){editor.innerHTML=old.html;updateDub()}}
-  qTitle();let t=null,dirty=false;
-  new MutationObserver(()=>{dirty=true;clearTimeout(t);t=setTimeout(()=>{qStore();dirty=false},500)}).observe(editor,{childList:true,subtree:true,characterData:true});
-  // un'altra scheda (es. aperta dal comando rapido) può aver salvato un testo più nuovo: lo riprendo
-  const sync=()=>{if(document.visibilityState!=='visible'||dirty)return;const Q2=store.get(QK,null);if(!Array.isArray(Q2))return;const c2=store.get(QC,qCur),d2=Q2.find(x=>x.id===c2);
-    Q=Q2;if(d2&&(c2!==qCur||d2.html!==editor.innerHTML)){qCur=c2;editor.innerHTML=d2.html||'';updateDub();qTitle()}};
-  document.addEventListener('visibilitychange',sync);window.addEventListener('pageshow',sync);window.addEventListener('focus',sync);
-  window.addEventListener('pagehide',qStore);
+  let d=null;try{d=JSON.parse(sessionStorage.getItem('dsa-scan-draft')||'null');sessionStorage.removeItem('dsa-scan-draft')}catch(e){}
+  if(d&&Date.now()-d.ts<20*60*1000){qCur=qGet(d.qCur)?d.qCur:null;setEditor(d.html);qDirty=!!d.qDirty;toast('Testo ripreso dopo la scansione')}
+  qTitle();
+  // ogni modifica = “non salvato” (niente salvataggio automatico)
+  new MutationObserver(()=>{if(qLoading)return;qDirty=true;qTitle()}).observe(editor,{childList:true,subtree:true,characterData:true});
+  // tornando dalla fotocamera senza ricarica la bozza non serve più
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')try{sessionStorage.removeItem('dsa-scan-draft')}catch(e){}});
 })();
 
 /* ───────── Scrivi a mano (Apple Pencil · Scribble) ───────── */
