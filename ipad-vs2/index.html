@@ -269,7 +269,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 #readTxt{max-width:68ch;margin:0 auto;padding:max(40px,env(safe-area-inset-top)) 28px 160px;cursor:pointer}
 #readTxt .sec,#readTxt br+br{display:none}
 #readTxt>div{margin:0 0 .9em}
-.readbar{position:fixed;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);color:var(--ink);font-family:var(--f-body)}
+.readbar{position:fixed;z-index:10;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);color:var(--ink);font-family:var(--f-body)}
 .rb{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;min-height:48px;min-width:48px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:16px;cursor:pointer}
 .rb svg.i{width:20px;height:20px}.rb:disabled{opacity:.4}
 .rb-play{background:var(--green);border-color:var(--green);color:#fff;min-width:130px;font-size:17px}
