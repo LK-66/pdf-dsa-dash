@@ -99,6 +99,7 @@ input[type=color]{width:34px;height:30px;border:1px solid var(--line);border-rad
 .modebar .spacer{flex:1}
 
 /* viewer */
+.pinch-ghost{position:fixed;z-index:65;overflow:hidden;pointer-events:none;background:#e7ecea}
 .viewer{flex:1;min-height:0;overflow:auto;background:#e7ecea;padding:16px;position:relative}
 .viewer.drop{outline:3px dashed var(--green);outline-offset:-8px}
 .empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--muted);gap:10px;padding:20px}
@@ -970,10 +971,10 @@ async function drawPage(pg,gen){
   try{
     const page=await p.doc.getPage(p.num);if(gen!==renderGen)return;
     const vp=page.getViewport({scale:S.scale});
-    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const dpr=Math.min(window.devicePixelRatio||1,2,Math.sqrt(16e6/(vp.width*vp.height))); // l'iPad non disegna canvas oltre ~16 milioni di pixel
     const c=pg.querySelector('canvas.pdfc');c.width=Math.floor(vp.width*dpr);c.height=Math.floor(vp.height*dpr);
     await page.render({canvasContext:c.getContext('2d'),viewport:vp,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null}).promise;
-    if(gen!==renderGen)return;
+    if(gen!==renderGen)return;pg._drawn=true;
     loadDrawing(n,pg.querySelector('canvas.drawc'));
     const tc=await page.getTextContent();if(gen!==renderGen)return;
     const has=tc.items.some(it=>it.str&&it.str.trim());
@@ -983,9 +984,57 @@ async function drawPage(pg,gen){
     await (task.promise||task);
   }catch(err){if(err&&err.name!=='RenderingCancelledException')console.error('Pagina',n,err)}
 }
-function zoomTo(s){s=Math.max(.3,Math.min(3,Math.round(s*100)/100));if(s===S.scale)return;
+function zoomTo(s){s=Math.max(.3,Math.min(4,Math.round(s*100)/100));if(s===S.scale)return;
   const ratio=viewer.scrollTop/(viewer.scrollHeight||1);S.scale=s;renderPages().then(()=>{viewer.scrollTop=ratio*viewer.scrollHeight})}
 function fitWidth(){if(!S.pages.length)return;const w=Math.max(...S.pages.map(p=>p.w));zoomTo((viewer.clientWidth-36)/w)}
+/* zoom con due dita: durante il gesto si ingrandisce l'immagine (veloce),
+   staccando le dita la pagina viene ridisegnata nitida, con il punto tra le dita fermo */
+const TOUCHES=new Set();
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')TOUCHES.add(e.pointerId)},true);
+['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,e=>TOUCHES.delete(e.pointerId),true));
+{
+  let P=null;
+  const fingers=e=>[...e.touches].filter(t=>t.touchType!=='stylus'); // l'Apple Pencil non conta
+  const mid=(a,b)=>{const r=viewer.getBoundingClientRect();return{x:(a.clientX+b.clientX)/2-r.left,y:(a.clientY+b.clientY)/2-r.top}};
+  const dist=(a,b)=>Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+  viewer.addEventListener('touchstart',e=>{
+    const f=fingers(e);if(f.length!==2||!S.pages.length||P)return;
+    const c=mid(f[0],f[1]);
+    P={d0:dist(f[0],f[1]),s0:S.scale,c0:c,c,k:1,sl:viewer.scrollLeft,st:viewer.scrollTop,ox:pagesEl.offsetLeft,oy:pagesEl.offsetTop};
+    P.org={x:viewer.scrollLeft+c.x-P.ox,y:viewer.scrollTop+c.y-P.oy}; // punto del PDF sotto le dita
+    pagesEl.style.transformOrigin=`${P.org.x}px ${P.org.y}px`;pagesEl.style.willChange='transform';
+    try{getSelection().removeAllRanges()}catch(_){}
+  },{passive:true});
+  viewer.addEventListener('touchmove',e=>{
+    if(!P)return;const f=fingers(e);if(f.length<2)return;e.preventDefault();
+    P.c=mid(f[0],f[1]);P.k=Math.max(.5/P.s0,Math.min(4/P.s0,dist(f[0],f[1])/P.d0));
+    pagesEl.style.transform=`translate(${P.c.x-P.c0.x}px,${P.c.y-P.c0.y}px) scale(${P.k})`;
+    $('#zVal').textContent=Math.round(P.s0*P.k*100)+'%';
+  },{passive:false});
+  const finish=async()=>{
+    if(!P)return;const p=P;P=null;
+    const s=Math.round(p.s0*p.k*100)/100;
+    if(Math.abs(s-p.s0)<.02){pagesEl.style.transform='';pagesEl.style.willChange='';updateChrome();return}
+    // l'immagine ingrandita resta visibile sopra il PDF finché le pagine nitide sono pronte
+    const r=viewer.getBoundingClientRect(),ghost=document.createElement('div'),inner=document.createElement('div');
+    ghost.className='pinch-ghost';Object.assign(ghost.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
+    Object.assign(inner.style,{position:'absolute',left:(p.ox-p.sl)+'px',top:(p.oy-p.st)+'px',width:pagesEl.offsetWidth+'px',transformOrigin:pagesEl.style.transformOrigin,transform:pagesEl.style.transform});
+    inner.className=pagesEl.className;while(pagesEl.firstChild)inner.appendChild(pagesEl.firstChild);
+    ghost.appendChild(inner);document.body.appendChild(ghost);
+    pagesEl.style.transform='';pagesEl.style.willChange='';
+    S.scale=s;await renderPages();
+    const f=s/p.s0;viewer.scrollLeft=p.ox+p.org.x*f-p.c.x;viewer.scrollTop=p.oy+p.org.y*f-p.c.y;
+    const t0=performance.now();
+    await new Promise(res=>{const chk=()=>{const vr=viewer.getBoundingClientRect();
+      const vis=[...pagesEl.querySelectorAll('.page')].filter(pg=>{const b=pg.getBoundingClientRect();return b.bottom>vr.top&&b.top<vr.bottom});
+      if(vis.every(pg=>pg._drawn)||performance.now()-t0>2000)res();else setTimeout(chk,50)};chk()});
+    ghost.remove();
+  };
+  viewer.addEventListener('touchend',e=>{if(P&&fingers(e).length<2)finish()});
+  viewer.addEventListener('touchcancel',()=>finish());
+  // Safari: niente zoom di tutta la pagina quando si pizzica il PDF
+  ['gesturestart','gesturechange'].forEach(t=>viewer.addEventListener(t,e=>e.preventDefault()));
+}
 $('#zIn').onclick=()=>zoomTo(S.scale+.15);$('#zOut').onclick=()=>zoomTo(S.scale-.15);$('#zFit').onclick=fitWidth;
 
 /* ───────── disegno: penna ed evidenziatore ───────── */
@@ -994,8 +1043,13 @@ function wirePage(pg,n){
   const dc=pg.querySelector('canvas.drawc'), cap=pg.querySelector('.capture');
   let drawing=false, base=null, tmp=null, tctx=null;
   const pos=e=>{const r=dc.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
+  let snap=null;
+  const cancelStroke=()=>{if(!drawing)return;drawing=false;if(snap){const ctx=dc.getContext('2d');ctx.globalAlpha=1;ctx.clearRect(0,0,dc.width,dc.height);ctx.drawImage(snap,0,0)}base=tmp=tctx=snap=null};
   dc.addEventListener('pointerdown',e=>{
-    if(S.mode!=='pen'&&S.mode!=='hl')return;e.preventDefault();dc.setPointerCapture(e.pointerId);drawing=true;const{x,y}=pos(e);
+    if(S.mode!=='pen'&&S.mode!=='hl')return;e.preventDefault();
+    if(TOUCHES.size>1){cancelStroke();return} // due dita = zoom, non un tratto
+    dc.setPointerCapture(e.pointerId);drawing=true;const{x,y}=pos(e);
+    snap=document.createElement('canvas');snap.width=dc.width;snap.height=dc.height;snap.getContext('2d').drawImage(dc,0,0);
     if(S.mode==='hl'){
       base=document.createElement('canvas');base.width=dc.width;base.height=dc.height;base.getContext('2d').drawImage(dc,0,0);
       tmp=document.createElement('canvas');tmp.width=dc.width;tmp.height=dc.height;tctx=tmp.getContext('2d');
@@ -1003,11 +1057,11 @@ function wirePage(pg,n){
     }else{const ctx=dc.getContext('2d');Object.assign(ctx,{globalAlpha:1,globalCompositeOperation:'source-over',strokeStyle:S.penColor,lineWidth:S.penSize,lineCap:'round',lineJoin:'round'});ctx.beginPath();ctx.moveTo(x,y)}
   });
   dc.addEventListener('pointermove',e=>{
-    if(!drawing)return;e.preventDefault();const{x,y}=pos(e);
+    if(!drawing)return;e.preventDefault();if(TOUCHES.size>1){cancelStroke();return}const{x,y}=pos(e);
     if(S.mode==='hl'&&tctx){tctx.lineTo(x,y);tctx.stroke();const ctx=dc.getContext('2d');ctx.clearRect(0,0,dc.width,dc.height);ctx.drawImage(base,0,0);ctx.globalAlpha=.3;ctx.drawImage(tmp,0,0);ctx.globalAlpha=1}
     else{const ctx=dc.getContext('2d');ctx.lineTo(x,y);ctx.stroke()}
   });
-  const end=()=>{if(!drawing)return;drawing=false;base=tmp=tctx=null;S.drawings[n]=dc.toDataURL()};
+  const end=()=>{if(!drawing)return;drawing=false;base=tmp=tctx=snap=null;S.drawings[n]=dc.toDataURL()};
   dc.addEventListener('pointerup',end);dc.addEventListener('pointercancel',end);
 
   // note e selezione area OCR
