@@ -321,7 +321,9 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .pentxt{width:100%;min-height:52vh;border:1px solid var(--line);border-radius:12px;padding:6px 16px;font-size:24px;line-height:48px;resize:vertical;font-family:var(--f-body);color:var(--ink);
   background:#fffef8 repeating-linear-gradient(to bottom,transparent 0,transparent 47px,#cfe0f3 47px,#cfe0f3 48px);background-attachment:local}
 .vrow{display:grid;grid-template-columns:90px 1fr auto;gap:8px;align-items:center;margin:6px 0}
-.vrow b{font-size:15px}.vrow select{padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px;min-width:0;background:var(--paper);color:var(--ink)}
+.vrow b{font-size:15px}.vrow.vsub span:first-child{font-size:14px;color:var(--muted);padding-left:6px}.vrow.vuse span:first-child{color:var(--green);font-weight:700}
+.vgseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;justify-self:start}.vgseg button{border:0;background:var(--paper);color:var(--ink);padding:8px 14px;font:inherit;font-size:15px;cursor:pointer}.vgseg button+button{border-left:1px solid var(--line)}.vgseg button.on{background:var(--green);color:#fff;font-weight:700}.vgseg button:disabled{opacity:.45;cursor:default}
+.vrow select{padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px;min-width:0;background:var(--paper);color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,10px);background:var(--ink);color:#fff;padding:9px 14px;border-radius:8px;font-size:14px;z-index:60;opacity:0;transition:.2s;pointer-events:none;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -1679,7 +1681,7 @@ function detectLang(t,fallback,minS=1.5,minGap=1){
   if(sc[best[0]]<minS||sc[best[0]]-sc[best[1]]<minGap)return fallback;
   return best[0];
 }
-S.tts=Object.assign({lang:'auto',rate:1,voice:{}},store.get('pdf-dsa-tts',{}));
+S.tts=Object.assign({lang:'auto',rate:1,voice:{},itG:'f',voiceM:''},store.get('pdf-dsa-tts',{}));
 const saveTts=()=>store.set('pdf-dsa-tts',S.tts);
 let VOICES=[];
 const APPLE_GOOD=/Alice|Federica|Luca|Paola|Amélie|Amelie|Thomas|Audrey|Aurélie|Anna|Helena|Markus|Petra|Yannick|Daniel|Kate|Serena|Samantha|Arthur|Martha|Stephanie|Oliver/i;
@@ -1693,24 +1695,37 @@ function vScore(v,lang){
 }
 const vLang=v=>v.lang.replace('_','-').toLowerCase().slice(0,2);
 function voicesFor(lang){const all=VOICES.filter(v=>vLang(v)===lang).sort((a,b)=>vScore(b,lang)-vScore(a,lang));const good=all.filter(v=>vScore(v,lang)>0);return good.length?good:all}
-function bestVoice(lang){const list=voicesFor(lang);return list.find(v=>v.name===S.tts.voice[lang])||list[0]||null}
+// Italiano: una voce femminile e una maschile. Il browser non dice il genere: lo si riconosce dal nome.
+// Le liste partono da voicesFor(): restano solo le voci di buona qualità, le migliori in cima.
+const IT_M=/\b(Luca|Diego|Giuseppe|Benigno|Calimero|Cataldo|Gianni|Lisandro|Rinaldo|Alessandro|Cosimo)/i;
+function itLists(){const all=voicesFor('it');return{f:all.filter(v=>!IT_M.test(v.name)),m:all.filter(v=>IT_M.test(v.name))}}
+function itVoice(g){const L=itLists()[g];return L.find(v=>v.name===(g==='m'?S.tts.voiceM:S.tts.voice.it))||L[0]||null}
+function bestVoice(lang){
+  if(lang==='it'){const g=S.tts.itG==='m'&&itLists().m.length?'m':'f';return itVoice(g)||voicesFor('it')[0]||null}
+  const list=voicesFor(lang);return list.find(v=>v.name===S.tts.voice[lang])||list[0]||null}
 const vLabel=v=>v.name.replace(/^(Microsoft|Google)\s+/,'').replace(/\s*-\s*(Italian|French|German|English).*$/i,'').replace(/Online \(Natural\)/i,'· naturale').replace(/\s*\(.*?\)\s*$/,'').trim()||v.name;
 function fillVoiceSel(){
   const sel=$('#ttsVoice'),lang=S.tts.lang;
   if(lang==='auto'){sel.hidden=true;return}
-  const list=voicesFor(lang);sel.innerHTML=list.map(v=>`<option value="${esc(v.name)}">${esc(vLabel(v))}</option>`).join('');
+  const list=lang==='it'?itLists()[S.tts.itG==='m'&&itLists().m.length?'m':'f']:voicesFor(lang);sel.innerHTML=list.map(v=>`<option value="${esc(v.name)}">${esc(vLabel(v))}</option>`).join('');
   const b=bestVoice(lang);if(b)sel.value=b.name;sel.hidden=list.length<2;
 }
 const SAMPLE={it:'Ciao, questa è la voce che leggerà i testi in italiano.',fr:'Bonjour, voici la voix qui lira les textes en français.',de:'Hallo, das ist die Stimme für die deutschen Texte.',en:'Hello, this is the voice that will read English texts.'};
 function renderVoices(){
-  $('#vRows').innerHTML=Object.keys(LANGS).map(l=>{const list=voicesFor(l),b=bestVoice(l);
+  const opt=(list,b)=>list.map(v=>`<option value="${esc(v.name)}"${b&&b.name===v.name?' selected':''}>${esc(vLabel(v))}</option>`).join('');
+  const IL=itLists(),g=S.tts.itG==='m'&&IL.m.length?'m':'f';
+  const itRows=`<div class="vrow"><b>Italiano</b><div class="vgseg" role="group" aria-label="Voce italiana usata"><button data-g="f" class="${g==='f'?'on':''}">♀ Femminile</button><button data-g="m" class="${g==='m'?'on':''}"${IL.m.length?'':' disabled'}>♂ Maschile</button></div><span></span></div>
+    <div class="vrow vsub${g==='f'?' vuse':''}"><span>♀ femminile</span>${IL.f.length?`<select data-l="it">${opt(IL.f,itVoice('f'))}</select><button class="btn sm" data-try="it-f">${ic('play')} Prova</button>`:'<span class="hint">nessuna voce femminile</span><span></span>'}</div>
+    <div class="vrow vsub${g==='m'?' vuse':''}"><span>♂ maschile</span>${IL.m.length?`<select data-l="it-m">${opt(IL.m,itVoice('m'))}</select><button class="btn sm" data-try="it-m">${ic('play')} Prova</button>`:'<span class="hint">nessuna voce maschile di buona qualità in questo browser</span><span></span>'}</div>`;
+  $('#vRows').innerHTML=itRows+Object.keys(LANGS).filter(l=>l!=='it').map(l=>{const list=voicesFor(l),b=bestVoice(l);
     return`<div class="vrow"><b>${LANGS[l]}</b>${list.length?`<select data-l="${l}">${list.map(v=>`<option value="${esc(v.name)}"${b&&b.name===v.name?' selected':''}>${esc(vLabel(v))}${/Natural|Online|Neural/i.test(v.name)?'':''}</option>`).join('')}</select><button class="btn sm" data-try="${l}">${ic('play')} Prova</button>`:'<span class="hint">nessuna voce in questo browser</span><span></span>'}</div>`}).join('');
   const nat=VOICES.some(v=>/Natural|Online/i.test(v.name));
   $('#vNote').textContent=nat?'':'Le voci «naturali» di Microsoft ci sono solo in Microsoft Edge (Windows o Mac). In Chrome usa le voci Google, su iPad le voci di Apple.';
 }
 $$('.vBtn').forEach(b=>{b.addEventListener('mousedown',e=>e.preventDefault());b.onclick=()=>{VOICES=speechSynthesis.getVoices();renderVoices();$('#vOv').hidden=false}});
-$('#vRows').addEventListener('change',e=>{const s=e.target.closest('select');if(!s)return;S.tts.voice[s.dataset.l]=s.value;saveTts();fillVoiceSel()});
-$('#vRows').addEventListener('click',e=>{const b=e.target.closest('[data-try]');if(!b)return;const l=b.dataset.try,v=bestVoice(l);speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(SAMPLE[l]);if(v){u.voice=v;u.lang=v.lang}else u.lang=PREF_REGION[l];u.rate=S.tts.rate;speechSynthesis.speak(u)});
+$('#vRows').addEventListener('change',e=>{const s=e.target.closest('select');if(!s)return;if(s.dataset.l==='it-m')S.tts.voiceM=s.value;else S.tts.voice[s.dataset.l]=s.value;saveTts();fillVoiceSel()});
+$('#vRows').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b||b.disabled)return;S.tts.itG=b.dataset.g;saveTts();renderVoices();fillVoiceSel();toast(b.dataset.g==='m'?'Italiano: voce maschile':'Italiano: voce femminile')});
+$('#vRows').addEventListener('click',e=>{const b=e.target.closest('[data-try]');if(!b)return;let l=b.dataset.try,v;if(l.startsWith('it-')){v=itVoice(l.slice(3));l='it'}else v=bestVoice(l);speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(SAMPLE[l]);if(v){u.voice=v;u.lang=v.lang}else u.lang=PREF_REGION[l];u.rate=S.tts.rate;speechSynthesis.speak(u)});
 function syncTtsUi(){
   $$('.ttsLangSel').forEach(s=>s.value=S.tts.lang);$('#ttsRate').value=String(S.tts.rate);
   $$('#rRate button').forEach(b=>b.classList.toggle('on',+b.dataset.r===S.tts.rate));fillVoiceSel();
