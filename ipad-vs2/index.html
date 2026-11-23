@@ -392,7 +392,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <button class="btn" id="pdfBack"><i data-i="book"></i> ‹ Editor</button>
       <b class="pdfname" id="pdfName">PDF</b>
       <span class="spacer"></span>
-      <button class="btn primary needpdf" id="pdfImport" hidden><i data-i="filedown"></i> Importa testo nell'editor</button>
+      <button class="btn primary needpdf" id="pdfImport" hidden><i data-i="filedown"></i> Importa tutto il PDF</button>
     </div>
     <div class="tb" id="toolbar" hidden>
       <div class="grp">
@@ -1378,7 +1378,8 @@ async function runOCROnArea(n,a){
     const c=document.createElement('canvas');c.width=Math.round(a.w*k);c.height=Math.round(a.h*k);
     c.getContext('2d').drawImage(full,a.x*k,a.y*k,a.w*k,a.h*k,0,0,c.width,c.height);
     const r=await ocrImage(c,pr=>setStatus(`OCR area: ${Math.round(pr*100)}%`,true),{full:true});
-    if(r.text){edAppend(`<div class="sec">— OCR area · pag. ${n} —</div>${r.html}<br>`);updateDub();setStatus('✅ OCR area completato'+(r.dubbi?` · ${r.dubbi} parol${r.dubbi===1?'a':'e'} da controllare`:''))}
+    if(r.text){edAppend(`<div class="sec">— OCR area · pag. ${n} —</div>${r.html}<br>`);updateDub();setStatus('✅ OCR area completato'+(r.dubbi?` · ${r.dubbi} parol${r.dubbi===1?'a':'e'} da controllare`:''));
+      if(document.body.classList.contains('pdfOpen'))toast('✓ Testo dell’area nell’editor · premi «‹ Editor» per vederlo')}
     else setStatus('OCR: nessun testo rilevato. Prova con un’area più grande o più nitida.');
   }catch(err){console.error(err);setStatus('Errore OCR: '+err.message)}
   finally{lockOcr(false)}
@@ -2240,8 +2241,12 @@ $('#penOk').onclick=()=>{
 };
 
 /* ───────── v3 · PDF DSA iPad: editor al centro, PDF a tutto schermo, Scansiona = Apple ───────── */
-function openPdf(){document.body.classList.add('pdfOpen');$('#pdfName').textContent=S.fileName||'PDF';requestAnimationFrame(()=>{if(S.pages.length)fitWidth()})}
-function closePdf(){document.body.classList.remove('pdfOpen');$('#floatCopy').hidden=true}
+// adatta alla larghezza solo per un PDF nuovo; tornando dall'editor restano zoom e punto della pagina
+const pdfView={fitted:false,sl:0,st:0};
+function openPdf(){document.body.classList.add('pdfOpen');$('#pdfName').textContent=S.fileName||'PDF';
+  requestAnimationFrame(()=>{if(!S.pages.length)return;
+    if(!pdfView.fitted){fitWidth();pdfView.fitted=true}else{viewer.scrollLeft=pdfView.sl;viewer.scrollTop=pdfView.st}})}
+function closePdf(){pdfView.sl=viewer.scrollLeft;pdfView.st=viewer.scrollTop;document.body.classList.remove('pdfOpen');$('#floatCopy').hidden=true}
 $('#v3Pdf').onclick=()=>{openPdf();if(!S.pages.length)$('#fileIn').click()};
 $('#pdfBack').onclick=closePdf;
 $('#pdfImport').onclick=async()=>{await importAll();closePdf();toast('✓ Testo del PDF aggiunto all’editor')};
@@ -2264,7 +2269,7 @@ $('#pasteGo').onclick=async()=>{
 };
 $('#pasteNo').onclick=()=>$('#pasteBar').hidden=true;
 {const _a2e=appleToEditor;appleToEditor=function(raw){const ok=_a2e(raw);if(ok)store.set('pdf-dsa-shortcut-ok',true);return ok}}
-{const _lp=loadPdf;loadPdf=async f=>{openPdf();await _lp(f);$('#pdfName').textContent=S.fileName||'PDF';fitWidth()}}
+{const _lp=loadPdf;loadPdf=async f=>{pdfView.fitted=true;pdfView.sl=pdfView.st=0;openPdf();await _lp(f);$('#pdfName').textContent=S.fileName||'PDF';fitWidth();pdfView.sl=pdfView.st=0}}
 /* ───────── vs2 · app dalla schermata Home: fotocamera interna + OCR, testo diretto nell'editor ───────── */
 const STANDALONE=navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
 document.body.classList.toggle('standalone',STANDALONE);
