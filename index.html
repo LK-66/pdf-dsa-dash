@@ -160,8 +160,15 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .editor .ul-red{text-decoration:underline 3px #EF4444;text-underline-offset:3px}.editor .ul-blue{text-decoration:underline 3px #3B82F6;text-underline-offset:3px}
 .editor .sec{font-family:var(--f-mono);font-size:.72em;font-weight:700;color:var(--green);letter-spacing:.03em;margin-top:.6em}
 .editor .tts-on{background:var(--hi);border-radius:3px}
-::highlight(tts-sent){background-color:#fff3bf}
-::highlight(tts-word){background-color:#FBBF24;color:#111}
+.edwrap{position:relative;flex:1;min-height:180px;display:flex}
+.edwrap>.editor{flex:1}
+.ttsLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5;mix-blend-mode:multiply} /* il colore si “mescola” col testo: le lettere restano visibili */
+#readOv>.ttsLayer{overflow:visible;bottom:auto;height:0;z-index:0;mix-blend-mode:normal} /* in Lettura il colore sta DIETRO il testo (Safari non fonde i colori nelle finestre a tutto schermo) */
+#readTxt{position:relative;z-index:1}
+.ttsLayer i{position:absolute;border-radius:3px}
+.ttsLayer .s{background:#fff1a8}
+.ttsLayer .w{background:#fbbf24}
+.dark-hl .ttsLayer{mix-blend-mode:normal}.dark-hl .ttsLayer .s{background:rgba(255,241,168,.16)}.dark-hl .ttsLayer .w{background:rgba(251,191,36,.38)}
 .editor .ocr-dubbio{background:#ffe4c7;border-bottom:2px dotted #d9730d;border-radius:2px;cursor:help}
 .editor .ocr-dubbio.cur{background:#ffc078;outline:2px solid #d9730d}
 .checkbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#fff1e3;border:1px solid #f3c99b;border-radius:10px;padding:6px 10px;font-size:14px}
@@ -216,13 +223,26 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .dest small{color:var(--muted)}
 .hint{font-size:13px;color:var(--muted);margin:0}
 
-#dsaOv{z-index:95} /* sopra la modalità Lettura */
+#dsaOv,#vOv{z-index:95}
+.vrow{display:grid;grid-template-columns:90px 1fr auto;gap:8px;align-items:center;margin:6px 0}
+.vrow b{font-size:15px}.vrow.vsub span:first-child{font-size:14px;color:var(--muted);padding-left:6px}.vrow.vuse span:first-child{color:var(--green);font-weight:700}
+.vgseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;justify-self:start}.vgseg button{border:0;background:var(--paper);color:var(--ink);padding:8px 14px;font:inherit;font-size:15px;cursor:pointer}.vgseg button+button{border-left:1px solid var(--line)}.vgseg button.on{background:var(--green);color:#fff;font-weight:700}.vgseg button:disabled{opacity:.45;cursor:default} /* sopra la modalità Lettura */
 #readOv{position:fixed;inset:0;z-index:80;overflow:auto;-webkit-overflow-scrolling:touch}
-#readTxt{max-width:68ch;margin:0 auto;padding:max(40px,env(safe-area-inset-top)) 28px 120px}
+#readTxt{max-width:68ch;margin:0 auto;padding:max(40px,env(safe-area-inset-top)) 28px 160px}
 #readTxt .sec,#readTxt br+br{display:none}
 #readTxt>div{margin:0 0 .9em}
-.readbar{position:fixed;z-index:10;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:6px;opacity:.85}
-.readbar:hover{opacity:1}
+.readbar{position:fixed;z-index:10;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);color:var(--ink);font-family:var(--f-body)}
+.rb{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;min-height:48px;min-width:48px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:16px;cursor:pointer}
+.rb svg.i{width:20px;height:20px}.rb:disabled{opacity:.4}
+.rb-play{background:var(--green);border-color:var(--green);color:#fff;min-width:130px;font-size:17px}
+.rb-play.on{background:var(--navy);border-color:var(--navy)}
+.rseg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rseg button{border:0;background:var(--paper);min-height:48px;padding:0 12px;font-weight:700;font-size:15px;cursor:pointer;color:var(--muted)}
+.rseg button+button{border-left:1px solid var(--line)}
+.rseg button.on{background:var(--green-soft);color:var(--green)}
+.rsel{min-height:48px;border:1px solid var(--line);border-radius:12px;padding:0 10px;font-weight:700;font-size:15px;background:var(--paper);color:var(--ink)}
+.langbadge{font-family:var(--f-mono);font-size:12px;font-weight:700;background:var(--navy);color:#fff;border-radius:6px;padding:4px 8px}
+@media (max-width:700px){.rseg button{padding:0 8px;font-size:13px}.rb-play{min-width:100px}.rb-exit span{display:none}}
 .toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,10px);background:var(--ink);color:#fff;padding:9px 14px;border-radius:8px;font-size:14px;z-index:60;opacity:0;transition:.2s;pointer-events:none;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -360,11 +380,15 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <div class="tts" id="ttsBar" hidden>
         <button class="btn sm primary" id="ttsPlay" title="Legge dal punto in cui metti il cursore (o il testo selezionato)"><i data-i="volume"></i> Ascolta</button>
         <button class="btn sm" id="ttsPause" disabled><i data-i="pause"></i> Pausa</button>
-        <button class="btn sm" id="ttsStop" disabled><i data-i="stop"></i></button>
-        <select id="ttsRate" title="Velocità"><option value="0.7">Lenta</option><option value="0.85">Calma</option><option value="1" selected>Normale</option><option value="1.2">Veloce</option></select>
-        <select id="ttsVoice" title="Voce"></select>
+        <button class="btn sm" id="ttsStop" disabled aria-label="Stop"><i data-i="stop"></i></button>
+        <select id="ttsRate" title="Velocità"><option value="0.7">Lenta</option><option value="0.85">Calma</option><option value="1">Normale</option><option value="1.2">Veloce</option></select>
+        <select class="ttsLangSel" title="Lingua della voce: auto la riconosce paragrafo per paragrafo"><option value="auto">Lingua: auto</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="en">English</option></select>
+        <select id="ttsVoice" title="Voce" hidden></select>
+        <button class="btn sm vBtn" title="Scegli la voce per ogni lingua"><i data-i="volume"></i> Voci</button>
+        <span class="langbadge" id="ttsBadge" hidden title="Lingua che sta leggendo"></span>
       </div>
-      <div class="editor" id="editor" contenteditable="true" spellcheck="false" data-ph="Importa testo dal PDF, copia una selezione o scansiona una pagina…" aria-label="Testo dell'editor"></div>
+      <div class="edwrap" id="edwrap"><div class="ttsLayer" id="edLayer"></div>
+      <div class="editor" id="editor" contenteditable="true" spellcheck="false" data-ph="Importa testo dal PDF, copia una selezione o scansiona una pagina…" aria-label="Testo dell'editor"></div></div>
       <div class="row">
         <button class="btn" id="saveAnn"><i data-i="save"></i> Salva</button>
         <button class="btn" id="expWord"><i data-i="filedown"></i> Word</button>
@@ -457,13 +481,34 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
   </div>
 </div>
 
+<div class="ov" id="vOv" hidden>
+  <div class="modal" role="dialog" aria-label="Voci">
+    <div class="mh"><h3><i data-i="volume"></i> Voci per lingua</h3><button class="btn icon" data-close="vOv"><i data-i="x"></i></button></div>
+    <div class="mb">
+      <p class="hint">In cima ci sono le voci migliori di questo browser («naturale» = voci neurali di Edge, «Google» = voci di Chrome). La scelta resta salvata. Con «Lingua: auto» ogni frase usa la voce della sua lingua.</p>
+      <div id="vRows"></div>
+      <p class="hint" id="vNote"></p>
+    </div>
+  </div>
+</div>
+
 <div id="readOv" hidden>
+  <div class="ttsLayer" id="readLayer"></div>
   <article id="readTxt" lang="it"></article>
   <nav class="readbar" aria-label="Comandi modalità lettura">
-    <button class="btn" id="readSet" aria-label="Impostazioni di lettura" title="Impostazioni di lettura: carattere, sfondo, spaziature"><i data-i="settings"></i></button>
-    <button class="btn" id="readMinus" aria-label="Testo più piccolo">A−</button>
-    <button class="btn" id="readPlus" aria-label="Testo più grande">A+</button>
-    <button class="btn primary" id="readClose" aria-label="Esci dalla modalità lettura"><i data-i="x"></i> Esci</button>
+    <button class="rb rb-play" id="rPlay"><svg class="i" viewBox="0 0 24 24"></svg><span>Leggi</span></button>
+    <button class="rb" id="rStop" disabled aria-label="Stop"><i data-i="stop"></i></button>
+    <div class="rseg" id="rRate" role="group" aria-label="Velocità">
+      <button data-r="0.7">Lenta</button><button data-r="0.85">Calma</button><button data-r="1">Normale</button><button data-r="1.2">Veloce</button>
+    </div>
+    <select class="rsel ttsLangSel" title="Lingua della voce"><option value="auto">Lingua: auto</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="en">English</option></select>
+    <button class="rb vBtn" title="Scegli la voce per ogni lingua">Voci</button>
+    <span class="langbadge" id="rBadge" hidden></span>
+    <span class="spacer"></span>
+    <button class="rb" id="readSet" aria-label="Impostazioni di lettura" title="Impostazioni di lettura: carattere, sfondo, spaziature"><i data-i="settings"></i></button>
+    <button class="rb" id="readMinus" aria-label="Testo più piccolo">A−</button>
+    <button class="rb" id="readPlus" aria-label="Testo più grande">A+</button>
+    <button class="rb rb-exit" id="readClose" aria-label="Esci dalla modalità lettura"><i data-i="x"></i><span>Esci</span></button>
   </nav>
 </div>
 
@@ -1171,7 +1216,7 @@ $('#sThemes').innerHTML=Object.entries(THEMES).map(([k,[bg,fg,l]])=>`<button dat
 function applyDsa(){
   const d=S.dsa,[bg,fg]=THEMES[d.theme]||THEMES.cream;
   const st={fontFamily:`'${d.fontFamily}',sans-serif`,fontSize:d.fontSize+'px',lineHeight:d.lineHeight,letterSpacing:d.letterSpacing+'em',wordSpacing:d.wordSpacing+'em',background:bg,color:fg};
-  Object.assign(editor.style,st);Object.assign($('#sPrev').style,st);
+  Object.assign(editor.style,st);$('#edwrap').classList.toggle('dark-hl',d.theme==='dark');Object.assign($('#sPrev').style,st);
   $('#sFont').value=d.fontFamily;$('#sSize').value=d.fontSize;$('#sLine').value=d.lineHeight;$('#sLet').value=d.letterSpacing;$('#sWord').value=d.wordSpacing;
   $('#sSizeV').textContent=d.fontSize+'px';$('#sLineV').textContent=d.lineHeight;$('#sLetV').textContent=d.letterSpacing.toFixed(2);$('#sWordV').textContent=d.wordSpacing.toFixed(2);
   $$('#sThemes button').forEach(b=>b.classList.toggle('on',b.dataset.t===d.theme));
@@ -1186,118 +1231,230 @@ $$('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).hidden=true);
 $$('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o){if(o.id==='camOv')closeCam();else o.hidden=true}}));
 applyDsa();
 
-/* ───────── lettura ad alta voce (voce del browser, gratuita) ─────────
-   Parte dal cursore (o legge la selezione), evidenzia la frase e la parola lette.
-   Fermandosi, il cursore resta sull'ultima parola: “Ascolta” riprende da lì. */
-(()=>{
-  if(!('speechSynthesis' in window))return;
-  const synth=speechSynthesis;$('#ttsBar').hidden=false;
-  const HLAPI=!!(window.CSS&&CSS.highlights&&window.Highlight);
-  let voices=[];
-  // Solo voci di qualità: "Online (Natural)" di Edge, "Google" di Chrome, "Enhanced/Premium/Siri" di Apple.
-  const score=v=>{const n=v.name;let s=0;if(/Natural|Online|Neural/i.test(n))s+=4;if(/Google/i.test(n))s+=3;if(/Enhanced|Premium|Siri|Alice|Federica|Luca/i.test(n))s+=2;if(!v.localService)s+=1;if(/Microsoft/i.test(n)&&!/Online|Natural/i.test(n))s-=5;return s};
-  const label=v=>v.name.replace(/^(Microsoft|Google)\s+/,'').replace(/\s*-\s*Italian.*$/i,'').replace(/Online \(Natural\)/i,'· naturale').replace(/\s*\(.*?\)\s*$/,'').trim()||v.name;
-  function loadVoices(){
-    voices=synth.getVoices();const it=voices.filter(v=>/^it/i.test(v.lang));
-    const good=it.filter(v=>score(v)>0).sort((a,b)=>score(b)-score(a));
-    const list=good.length?good:it;const cur=$('#ttsVoice').value;
-    $('#ttsVoice').innerHTML=list.map(v=>`<option value="${esc(v.name)}">${esc(label(v))}</option>`).join('');
-    if(cur&&list.some(v=>v.name===cur))$('#ttsVoice').value=cur;
-    $('#ttsVoice').hidden=list.length<2;
-  }
-  loadVoices();synth.onvoiceschanged=loadVoices;
+/* ───────── voci del browser e lingue (IT · FR · DE · EN) ─────────
+   La lingua viene riconosciuta paragrafo per paragrafo (oppure scelta a mano);
+   per ogni lingua si usa la voce migliore disponibile nel browser. */
+const LANGS={it:'Italiano',fr:'Français',de:'Deutsch',en:'English'};
+const PREF_REGION={it:'it-it',fr:'fr-fr',de:'de-de',en:'en-gb'};
+const STOP={
+  it:'e lo gli di che è per non una uno del della sul sulla al ai nei negli tra fra col dei delle degli sono con nel nella nelle alla alle anche come più questo questa questi ma ha hanno perché quando molto essere già dove cosa tutto loro i da ci cui poi però solo sempre ancora quella quello quelli molti ogni',
+  fr:'suis mon mes ton tes les et est une pas que qui pour dans sur avec ce cette elle nous vous sont au aux je mais très où ça leur était être avoir fait comme tout plus ont sa ses',
+  de:'habe bin bist hast mein meine dein deine der die das und ist nicht ein eine einen ich er sie es wir zu mit auf für den dem von im sind auch wie aber kein keine noch schon oder wenn sich bei nach aus ihr hat haben',
+  en:'am the and is are of to it that you he she we they this with for not be have has were what my your does can will would there their from which an at by'
+};
+const STOPS={};for(const k in STOP)STOPS[k]=new Set(STOP[k].split(' '));
+// lingua di una singola frase: diversa da quella del paragrafo solo se le prove sono chiare
+function strongLang(t,para){
+  const words=t.toLowerCase().match(/[\p{L}’']+/gu)||[];if(words.length<4)return null;
+  const l=detectLang(t,null,3,2);return l&&l!==para?l:null;
+}
+function detectLang(t,fallback,minS=1.5,minGap=1){
+  const words=t.toLowerCase().match(/[\p{L}’']+/gu)||[];
+  if(words.length<3)return fallback;
+  const sc={it:0,fr:0,de:0,en:0};
+  for(let w of words){w=w.replace(/^(l|d|qu|j|n|s|c|m|t|dell|all|nell|sull|dall|un)['’]/,'');for(const k in STOPS)if(STOPS[k].has(w))sc[k]++}
+  sc.de+=(t.match(/[äöüß]/gi)||[]).length*.6;
+  sc.fr+=(t.match(/[çêâîôûœë]/gi)||[]).length*.6+(t.match(/\b(qu|j|n|c)['’]/gi)||[]).length*.8;
+  sc.it+=(t.match(/\b(gli|dell|nell|dall|sull)['’]?|[ìò]/gi)||[]).length*.5;
+  sc.en+=(t.match(/\b\w+['’](s|t|re|ll|ve)\b/gi)||[]).length*.8;
+  const best=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
+  if(sc[best[0]]<minS||sc[best[0]]-sc[best[1]]<minGap)return fallback;
+  return best[0];
+}
+S.tts=Object.assign({lang:'auto',rate:1,voice:{},itG:'f',voiceM:''},store.get('pdf-dsa-tts',{}));
+const saveTts=()=>store.set('pdf-dsa-tts',S.tts);
+let VOICES=[];
+const APPLE_GOOD=/Alice|Federica|Luca|Paola|Amélie|Amelie|Thomas|Audrey|Aurélie|Anna|Helena|Markus|Petra|Yannick|Daniel|Kate|Serena|Samantha|Arthur|Martha|Stephanie|Oliver/i;
+const NOVELTY=/Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Junior|Ralph|Kathy|Fred/;
+function vScore(v,lang){
+  const n=v.name;let s=0;
+  if(/Natural|Online|Neural/i.test(n))s+=4;if(/Google/i.test(n))s+=3;if(/Enhanced|Premium|Siri/i.test(n))s+=3;if(APPLE_GOOD.test(n))s+=2;
+  if(!v.localService)s+=1;if(/Microsoft/i.test(n)&&!/Online|Natural/i.test(n))s-=5;if(NOVELTY.test(n))s-=4;
+  if(lang&&v.lang.replace('_','-').toLowerCase()===PREF_REGION[lang])s+=1;
+  return s;
+}
+const vLang=v=>v.lang.replace('_','-').toLowerCase().slice(0,2);
+function voicesFor(lang){const all=VOICES.filter(v=>vLang(v)===lang).sort((a,b)=>vScore(b,lang)-vScore(a,lang));const good=all.filter(v=>vScore(v,lang)>0);return good.length?good:all}
+// Italiano: una voce femminile e una maschile. Il browser non dice il genere: lo si riconosce dal nome.
+// Le liste partono da voicesFor(): restano solo le voci di buona qualità, le migliori in cima.
+const IT_M=/\b(Luca|Diego|Giuseppe|Benigno|Calimero|Cataldo|Gianni|Lisandro|Rinaldo|Alessandro|Cosimo)/i;
+function itLists(){const all=voicesFor('it');return{f:all.filter(v=>!IT_M.test(v.name)),m:all.filter(v=>IT_M.test(v.name))}}
+function itVoice(g){const L=itLists()[g];return L.find(v=>v.name===(g==='m'?S.tts.voiceM:S.tts.voice.it))||L[0]||null}
+function bestVoice(lang){
+  if(lang==='it'){const g=S.tts.itG==='m'&&itLists().m.length?'m':'f';return itVoice(g)||voicesFor('it')[0]||null}
+  const list=voicesFor(lang);return list.find(v=>v.name===S.tts.voice[lang])||list[0]||null}
+const vLabel=v=>v.name.replace(/^(Microsoft|Google)\s+/,'').replace(/\s*-\s*(Italian|French|German|English).*$/i,'').replace(/Online \(Natural\)/i,'· naturale').replace(/\s*\(.*?\)\s*$/,'').trim()||v.name;
+function fillVoiceSel(){
+  const sel=$('#ttsVoice'),lang=S.tts.lang;
+  if(lang==='auto'){sel.hidden=true;return}
+  const list=lang==='it'?itLists()[S.tts.itG==='m'&&itLists().m.length?'m':'f']:voicesFor(lang);sel.innerHTML=list.map(v=>`<option value="${esc(v.name)}">${esc(vLabel(v))}</option>`).join('');
+  const b=bestVoice(lang);if(b)sel.value=b.name;sel.hidden=list.length<2;
+}
+const SAMPLE={it:'Ciao, questa è la voce che leggerà i testi in italiano.',fr:'Bonjour, voici la voix qui lira les textes en français.',de:'Hallo, das ist die Stimme für die deutschen Texte.',en:'Hello, this is the voice that will read English texts.'};
+function renderVoices(){
+  const opt=(list,b)=>list.map(v=>`<option value="${esc(v.name)}"${b&&b.name===v.name?' selected':''}>${esc(vLabel(v))}</option>`).join('');
+  const IL=itLists(),g=S.tts.itG==='m'&&IL.m.length?'m':'f';
+  const itRows=`<div class="vrow"><b>Italiano</b><div class="vgseg" role="group" aria-label="Voce italiana usata"><button data-g="f" class="${g==='f'?'on':''}">♀ Femminile</button><button data-g="m" class="${g==='m'?'on':''}"${IL.m.length?'':' disabled'}>♂ Maschile</button></div><span></span></div>
+    <div class="vrow vsub${g==='f'?' vuse':''}"><span>♀ femminile</span>${IL.f.length?`<select data-l="it">${opt(IL.f,itVoice('f'))}</select><button class="btn sm" data-try="it-f">${ic('play')} Prova</button>`:'<span class="hint">nessuna voce femminile</span><span></span>'}</div>
+    <div class="vrow vsub${g==='m'?' vuse':''}"><span>♂ maschile</span>${IL.m.length?`<select data-l="it-m">${opt(IL.m,itVoice('m'))}</select><button class="btn sm" data-try="it-m">${ic('play')} Prova</button>`:'<span class="hint">nessuna voce maschile di buona qualità in questo browser</span><span></span>'}</div>`;
+  $('#vRows').innerHTML=itRows+Object.keys(LANGS).filter(l=>l!=='it').map(l=>{const list=voicesFor(l),b=bestVoice(l);
+    return`<div class="vrow"><b>${LANGS[l]}</b>${list.length?`<select data-l="${l}">${list.map(v=>`<option value="${esc(v.name)}"${b&&b.name===v.name?' selected':''}>${esc(vLabel(v))}${/Natural|Online|Neural/i.test(v.name)?'':''}</option>`).join('')}</select><button class="btn sm" data-try="${l}">${ic('play')} Prova</button>`:'<span class="hint">nessuna voce in questo browser</span><span></span>'}</div>`}).join('');
+  const nat=VOICES.some(v=>/Natural|Online/i.test(v.name));
+  $('#vNote').textContent=nat?'':'Le voci «naturali» di Microsoft ci sono solo in Microsoft Edge (Windows o Mac). In Chrome usa le voci Google, su iPad le voci di Apple.';
+}
+$$('.vBtn').forEach(b=>{b.addEventListener('mousedown',e=>e.preventDefault());b.onclick=()=>{VOICES=speechSynthesis.getVoices();renderVoices();$('#vOv').hidden=false}});
+$('#vRows').addEventListener('change',e=>{const s=e.target.closest('select');if(!s)return;if(s.dataset.l==='it-m')S.tts.voiceM=s.value;else S.tts.voice[s.dataset.l]=s.value;saveTts();fillVoiceSel()});
+$('#vRows').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b||b.disabled)return;S.tts.itG=b.dataset.g;saveTts();renderVoices();fillVoiceSel();toast(b.dataset.g==='m'?'Italiano: voce maschile':'Italiano: voce femminile')});
+$('#vRows').addEventListener('click',e=>{const b=e.target.closest('[data-try]');if(!b)return;let l=b.dataset.try,v;if(l.startsWith('it-')){v=itVoice(l.slice(3));l='it'}else v=bestVoice(l);speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(SAMPLE[l]);if(v){u.voice=v;u.lang=v.lang}else u.lang=PREF_REGION[l];u.rate=S.tts.rate;speechSynthesis.speak(u)});
+function syncTtsUi(){
+  $$('.ttsLangSel').forEach(s=>s.value=S.tts.lang);$('#ttsRate').value=String(S.tts.rate);
+  $$('#rRate button').forEach(b=>b.classList.toggle('on',+b.dataset.r===S.tts.rate));fillVoiceSel();
+}
 
-  // ricorda dove è il cursore nell'editor (il clic sui pulsanti non lo perde)
-  let caret=null;
-  document.addEventListener('selectionchange',()=>{const s=getSelection();if(s.rangeCount&&editor.contains(s.getRangeAt(0).commonAncestorContainer))caret=s.getRangeAt(0).cloneRange()});
-  $$('#ttsBar button').forEach(b=>b.addEventListener('mousedown',e=>e.preventDefault()));
+/* motore di lettura riutilizzabile (editor e modalità Lettura) */
 
-  // mappa testo ↔ nodi dell'editor (salta le intestazioni “— Pagina n —”)
+let activeReader=null;
+const st0cps={}; // velocità misurata di ogni voce (caratteri al secondo), per le voci senza eventi di parola
+function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), skipSec}
+  let st=null;
   function buildMap(){
-    let text='';const segs=[];
-    const BLOCK=/^(DIV|P|LI|H[1-6]|BR|UL|OL|TR)$/;
-    (function walk(n){
-      for(const c of n.childNodes){
-        if(c.nodeType===3){if(c.nodeValue){segs.push({node:c,start:text.length,len:c.nodeValue.length});text+=c.nodeValue}}
-        else if(c.nodeType===1){
-          if(c.classList.contains('sec')){text+='\n';continue}
-          if(c.tagName==='BR'){text+='\n';continue}
-          walk(c);if(BLOCK.test(c.tagName))text+='\n';
-        }
-      }
-    })(editor);
-    return{text,segs};
+    let text='';const segs=[];const BLOCK=/^(DIV|P|LI|H[1-6]|UL|OL|TR|ARTICLE|SECTION)$/;
+    (function walk(n){for(const c of n.childNodes){
+      if(c.nodeType===3){if(c.nodeValue){segs.push({node:c,start:text.length,len:c.nodeValue.length});text+=c.nodeValue}}
+      else if(c.nodeType===1){if(c.classList.contains('sec')||c.tagName==='BR'){text+='\n';continue}walk(c);if(BLOCK.test(c.tagName))text+='\n'}
+    }})(o.root);
+    // lingua per paragrafo
+    const paras=[];let prev='it';
+    for(const m of text.matchAll(/[^\n]+/g)){const lang=S.tts.lang!=='auto'?S.tts.lang:detectLang(m[0],prev);prev=lang;paras.push({s:m.index,e:m.index+m[0].length,lang})}
+    return{text,segs,paras};
   }
   function idxOf(map,node,off){
     if(node.nodeType===3){const s=map.segs.find(x=>x.node===node);if(s)return s.start+Math.min(off,s.len)}
-    const r=document.createRange();r.setStart(node,off);r.collapse(true);
+    const r=document.createRange();try{r.setStart(node,off)}catch(e){return 0}r.collapse(true);
     for(const s of map.segs){if(r.comparePoint(s.node,0)>=0)return s.start}
     return map.text.length;
   }
-  function dom(map,i){
-    let lo=0,hi=map.segs.length-1,best=null;
-    while(lo<=hi){const m=(lo+hi)>>1,s=map.segs[m];if(s.start<=i){best=s;lo=m+1}else hi=m-1}
-    if(!best)return map.segs[0]?[map.segs[0].node,0]:null;
-    return[best.node,Math.min(i-best.start,best.len)];
-  }
+  function dom(map,i){let lo=0,hi=map.segs.length-1,best=null;while(lo<=hi){const m=(lo+hi)>>1,s=map.segs[m];if(s.start<=i){best=s;lo=m+1}else hi=m-1}
+    if(!best)return map.segs[0]?[map.segs[0].node,0]:null;return[best.node,Math.min(i-best.start,best.len)]}
   function rangeOf(map,a,b){const p=dom(map,a),q=dom(map,b);if(!p||!q)return null;const r=document.createRange();try{r.setStart(p[0],p[1]);r.setEnd(q[0],q[1])}catch(e){return null}return r}
-  function mark(name,r){if(!HLAPI)return;if(r)CSS.highlights.set(name,new Highlight(r));else CSS.highlights.delete(name)}
-  function keepVisible(r){if(!r)return;const b=r.getBoundingClientRect(),e=editor.getBoundingClientRect();if(!b.height)return;
-    if(b.top<e.top+30||b.bottom>e.bottom-30)editor.scrollTop+=b.top-e.top-e.height/3}
-
-  let st=null; // stato della lettura in corso
-  function ui(){const on=!!st;$('#ttsPause').disabled=!on;$('#ttsStop').disabled=!on;$('#ttsPause').innerHTML=on&&st.paused?ic('play')+' Riprendi':ic('pause')+' Pausa';$('#ttsPlay').disabled=on}
-
-  function start(){
-    const map=buildMap();if(!map.text.trim()){toast('Niente da leggere: l’editor è vuoto');return}
+  // evidenziazione: riquadri disegnati sopra il testo e ridisegnati a ogni parola (niente resti su Safari)
+  const cur={'tts-sent':null,'tts-word':null};
+  function paint(){
+    const L=o.layer;if(!L)return;const host=L.parentElement,hr=host.getBoundingClientRect(),sx=host===o.scroller?host.scrollLeft:0,sy=host===o.scroller?host.scrollTop:0;
+    let h='';
+    for(const [name,cls] of [['tts-sent','s'],['tts-word','w']]){const r=cur[name];if(!r)continue;
+      for(const q of r.getClientRects()){if(q.width<1||q.height<1)continue;h+=`<i class="${cls}" style="left:${q.left-hr.left+sx-1}px;top:${q.top-hr.top+sy}px;width:${q.width+2}px;height:${q.height}px"></i>`}}
+    L.innerHTML=h;
+  }
+  function mark(name,r){cur[name]=r||null;paint()}
+  if(o.scroller)o.scroller.addEventListener('scroll',()=>{if(cur['tts-word']||cur['tts-sent'])paint()},{passive:true});
+  window.addEventListener('resize',()=>{if(cur['tts-word']||cur['tts-sent'])paint()});
+  function keepVisible(r){if(!r)return;const sc=o.scroller||o.root,b=r.getBoundingClientRect(),e=sc.getBoundingClientRect();if(!b.height)return;
+    const bottom=Math.min(e.bottom,innerHeight)-(o.bottomPad||30);if(b.top<e.top+30||b.bottom>bottom)sc.scrollTop+=b.top-e.top-(bottom-e.top)/3}
+  const state=()=>o.onState&&o.onState(st?{playing:true,paused:st.paused,lang:st.lang}:{playing:false});
+  function start(range){
+    if(activeReader&&activeReader!==api)activeReader.stop(true);
+    activeReader=api;
+    const map=buildMap();if(!map.text.trim()){toast('Niente da leggere');return false}
     let a=0,b=map.text.length;
-    if(caret&&editor.contains(caret.startContainer)){
-      a=idxOf(map,caret.startContainer,caret.startOffset);
-      if(!caret.collapsed)b=idxOf(map,caret.endContainer,caret.endOffset);
-      while(a>0&&/[\p{L}\p{N}'’]/u.test(map.text[a-1]))a--;          // dall'inizio della parola
+    if(range&&o.root.contains(range.startContainer)){
+      a=idxOf(map,range.startContainer,range.startOffset);if(!range.collapsed)b=idxOf(map,range.endContainer,range.endOffset);
+      while(a>0&&/[\p{L}\p{N}'’]/u.test(map.text[a-1]))a--;
+      if(a>=map.text.trim().length&&range.collapsed)a=0;
     }
-    if(a>=map.text.trim().length&&caret&&caret.collapsed)a=0;           // cursore in fondo: ricomincia
-    const chunks=[],re=/[^.!?;:\n]+[.!?;:…]*["»”’)]*[ \t]*|\n+/g,part=map.text.slice(a,b);let m;
-    while((m=re.exec(part))){if(m[0].trim())chunks.push({t:m[0],s:a+m.index})}
-    if(!chunks.length){toast('Niente da leggere da questo punto');return}
-    synth.cancel();
-    st={map,chunks,i:0,paused:false,word:a,boundaryOK:false,timer:null,t0:0,pausedAt:0,pausedFor:0};
-    ui();speakNext();
+    // frasi (solo . ! ? …), poi unite in blocchi più lunghi della stessa lingua: meno pause tra un pezzo e l'altro
+    const chunks=[],re=/[^.!?…\n]+[.!?…]*["»”’)]*[ \t]*/g,MAXC=260;
+    for(const p of map.paras){
+      if(p.e<=a||p.s>=b)continue;const s0=Math.max(a,p.s),e0=Math.min(b,p.e),part=map.text.slice(s0,e0);let m;re.lastIndex=0;
+      while((m=re.exec(part))){if(!m[0].trim())continue;
+        const lang=S.tts.lang!=='auto'?S.tts.lang:(strongLang(m[0],p.lang)||p.lang); // la frase cambia lingua solo con prove chiare
+        const last=chunks[chunks.length-1];
+        if(last&&last.p===p&&last.lang===lang&&last.t.length+m[0].length<=MAXC)last.t+=m[0];
+        else chunks.push({t:m[0],s:s0+m.index,lang,p});
+      }
+    }
+    if(!chunks.length){toast('Niente da leggere da questo punto');return false}
+    speechSynthesis.cancel();
+    st={map,chunks,cur:-1,q:-1,paused:false,word:a,lang:chunks[0].lang,timer:null,t0:0,pausedAt:0,pausedFor:0,bOK:{},cps:st0cps};
+    state();setTimeout(()=>enqueue(0),speechSynthesis.speaking?120:0);return true;
   }
-  function wordAt(map,i){const m=map.text.slice(i).match(/^[\p{L}\p{N}'’-]+/u);return m?m[0].length:1}
-  function showWord(i,len){if(!st)return;st.word=i;const r=rangeOf(st.map,i,i+(len||wordAt(st.map,i)));mark('tts-word',r);keepVisible(r)}
-  function speakNext(){
-    if(!st)return;
-    if(st.i>=st.chunks.length){finish(true);return}
-    const c=st.chunks[st.i++],u=new SpeechSynthesisUtterance(c.t),v=voices.find(x=>x.name===$('#ttsVoice').value);
-    if(v){u.voice=v;u.lang=v.lang}else u.lang='it-IT';u.rate=+$('#ttsRate').value;
-    mark('tts-sent',rangeOf(st.map,c.s,c.s+c.t.trimEnd().length));
-    const words=[...c.t.matchAll(/[\p{L}\p{N}'’-]+/gu)].map(w=>({o:c.s+w.index,l:w[0].length,rel:w.index}));
-    if(words[0])showWord(words[0].o,words[0].l);
-    u.onboundary=e=>{if(e.name&&e.name!=='word')return;st&&(st.boundaryOK=true);clearInterval(st&&st.timer);const w=words.find(x=>x.rel>=e.charIndex)||words[words.length-1];if(w)showWord(w.o,w.l)};
-    u.onstart=()=>{ // voci senza eventi di parola (es. Google): avanzamento stimato sul tempo
-      if(!st||st.boundaryOK||words.length<2)return;
-      st.t0=performance.now();st.pausedFor=0;const cps=14.5*u.rate,total=c.t.length;
-      clearInterval(st.timer);st.timer=setInterval(()=>{if(!st||st.paused||st.boundaryOK)return;const pos=Math.min(total,(performance.now()-st.t0-st.pausedFor)/1000*cps);let w=words[0];for(const x of words){if(x.rel<=pos)w=x;else break}if(w&&w.o!==st.word)showWord(w.o,w.l)},90);
+  function wordLen(map,i){const m=map.text.slice(i).match(/^[\p{L}\p{N}'’-]+/u);return m?m[0].length:1}
+  function showWord(i,len){if(!st)return;st.word=i;const r=rangeOf(st.map,i,i+(len||wordLen(st.map,i)));mark('tts-word',r);keepVisible(r)}
+  // Il pezzo successivo viene messo in coda appena inizia quello attuale: il browser passa dall'uno all'altro senza pause.
+  // L'evidenziazione segue gli eventi «parola» della voce; se la voce non li manda, si stima sul tempo,
+  // con una velocità che si corregge da sola misurando quanto dura ogni pezzo letto.
+  function enqueue(k){
+    if(!st||k>=st.chunks.length||k<=st.q)return;st.q=k;const S0=st;
+    const c=st.chunks[k],u=new SpeechSynthesisUtterance(c.t),v=bestVoice(c.lang),vk=v?v.name:c.lang;
+    if(v){u.voice=v;u.lang=v.lang}else u.lang=PREF_REGION[c.lang];u.rate=S.tts.rate;
+    // per la stima: le pause della voce dopo virgole e punti valgono qualche carattere in più
+    const pw=i=>{const pre=c.t.slice(0,i);return i+4*(pre.match(/[,;:]/g)||[]).length+8*(pre.match(/[.!?…]/g)||[]).length};
+    const words=[...c.t.matchAll(/[\p{L}\p{N}'’-]+/gu)].map(w=>({o:c.s+w.index,l:w[0].length,rel:w.index,eff:pw(w.index)}));
+    const effTot=pw(c.t.trimEnd().length);
+    let gotB=false;
+    const mine=()=>st===S0&&st.cur===k;
+    u.onstart=()=>{
+      if(st!==S0)return;st.cur=k;st.t0=performance.now();st.pausedFor=0;
+      if(st.lang!==c.lang){st.lang=c.lang;state()}
+      mark('tts-sent',rangeOf(st.map,c.s,c.s+c.t.trimEnd().length));
+      if(words[0])showWord(words[0].o,words[0].l);
+      clearInterval(st.timer);
+      if(!st.bOK[vk]&&words.length>1){
+        st.timer=setInterval(()=>{if(!mine()||st.paused||gotB)return;const cps=(st.cps[vk]||14.5)*u.rate;
+          const pos=(performance.now()-st.t0-st.pausedFor)/1000*cps;let w=words[0];for(const x of words){if(x.eff<=pos)w=x;else break}
+          if(pos<effTot+20&&w.o!==st.word)showWord(w.o,w.l)},80);
+      }
+      enqueue(k+1);
     };
-    u.onend=()=>{if(st){clearInterval(st.timer);speakNext()}};
-    u.onerror=e=>{if(e.error==='interrupted'||e.error==='canceled')return;if(st){clearInterval(st.timer);speakNext()}};
-    synth.speak(u);
+    u.onboundary=e=>{if(e.name&&e.name!=='word')return;if(!mine())return;gotB=true;st.bOK[vk]=true;clearInterval(st.timer);
+      let w=words[0];for(const x of words){if(x.rel<=e.charIndex+1)w=x;else break}if(w&&w.o!==st.word)showWord(w.o,w.l)};
+    const end=()=>{
+      if(!mine())return;clearInterval(st.timer);
+      const dur=(performance.now()-st.t0-st.pausedFor)/1000;
+      if(!gotB&&dur>.8&&c.t.length>25){const real=effTot/dur/u.rate;st0cps[vk]=st.cps[vk]=st.cps[vk]?st.cps[vk]*.4+real*.6:real}
+      if(k>=st.chunks.length-1)stop(false,true);
+    };
+    u.onend=end;
+    u.onerror=e=>{if(e.error==='interrupted'||e.error==='canceled')return;if(st===S0&&st.cur<k)st.cur=k;end();if(st===S0&&k<st.chunks.length-1&&st.cur===k)enqueue(k+1)};
+    speechSynthesis.speak(u);
   }
-  function finish(done){
-    if(!st)return;const w=st.word,map=st.map;clearInterval(st.timer);st=null;synth.cancel();
-    mark('tts-word',null);mark('tts-sent',null);ui();
-    if(!done){const p=dom(map,w);if(p){const r=document.createRange();r.setStart(p[0],p[1]);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r);caret=r.cloneRange()}}
-    else caret=null;
+  function stop(silent,done){
+    if(!st)return;const w=st.word,map=st.map;clearInterval(st.timer);st=null;speechSynthesis.cancel();
+    mark('tts-word',null);mark('tts-sent',null);if(activeReader===api)activeReader=null;state();
+    if(o.onStop)o.onStop(done?null:dom(map,w));
   }
-  $('#ttsPlay').onclick=start;
-  $('#ttsPause').onclick=()=>{if(!st)return;if(st.paused){synth.resume();st.pausedFor+=performance.now()-st.pausedAt;st.paused=false}else{synth.pause();st.pausedAt=performance.now();st.paused=true}ui()};
-  $('#ttsStop').onclick=()=>finish(false);
-  $('#ttsRate').onchange=$('#ttsVoice').onchange=()=>{if(st){const w=st.word,map=st.map;finish(false);const p=dom(map,w);if(p){caret=document.createRange();caret.setStart(p[0],p[1]);caret.collapse(true)}start()}};
-  // durante la lettura: un clic nel testo fa ripartire da lì; scrivere ferma la lettura
-  editor.addEventListener('pointerup',()=>{if(!st)return;setTimeout(()=>{const s=getSelection();if(s.rangeCount&&s.isCollapsed&&editor.contains(s.anchorNode)){caret=s.getRangeAt(0).cloneRange();st&&(clearInterval(st.timer),st=null);synth.cancel();start()}},20)});
-  editor.addEventListener('input',()=>{if(st)finish(false)});
-  window.addEventListener('beforeunload',()=>synth.cancel());
+  function pause(){if(!st)return;if(st.paused){speechSynthesis.resume();st.pausedFor+=performance.now()-st.pausedAt;st.paused=false}else{speechSynthesis.pause();st.pausedAt=performance.now();st.paused=true}state()}
+  function restartHere(){if(!st)return null;const p=dom(st.map,st.word);if(!p)return null;const r=document.createRange();r.setStart(p[0],p[1]);r.collapse(true);return r}
+  const api={start,stop,pause,playing:()=>!!st,paused:()=>!!(st&&st.paused),restartHere};
+  return api;
+}
+const pointRange=(x,y)=>{if(document.caretRangeFromPoint)return document.caretRangeFromPoint(x,y);if(document.caretPositionFromPoint){const p=document.caretPositionFromPoint(x,y);if(!p)return null;const r=document.createRange();r.setStart(p.offsetNode,p.offset);r.collapse(true);return r}return null};
+
+/* barra “Ascolta” dell'editor */
+let edReader=null;
+(()=>{
+  if(!('speechSynthesis' in window))return;
+  $('#ttsBar').hidden=false;
+  const loadV=()=>{VOICES=speechSynthesis.getVoices();fillVoiceSel()};loadV();speechSynthesis.onvoiceschanged=loadV;
+  let caret=null;
+  document.addEventListener('selectionchange',()=>{const s=getSelection();if(s.rangeCount&&editor.contains(s.getRangeAt(0).commonAncestorContainer))caret=s.getRangeAt(0).cloneRange()});
+  $$('#ttsBar button').forEach(b=>b.addEventListener('mousedown',e=>e.preventDefault()));
+  edReader=makeReader({root:editor,scroller:editor,layer:$('#edLayer'),
+    onState:s=>{$('#ttsPause').disabled=!s.playing;$('#ttsStop').disabled=!s.playing;$('#ttsPlay').disabled=s.playing;
+      $('#ttsPause').innerHTML=s.paused?ic('play')+' Riprendi':ic('pause')+' Pausa';
+      const b=$('#ttsBadge');b.hidden=!s.playing;if(s.playing)b.textContent=s.lang.toUpperCase()},
+    onStop:p=>{if(p){const r=document.createRange();r.setStart(p[0],p[1]);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r);caret=r.cloneRange()}else caret=null}});
+  $('#ttsPlay').onclick=()=>edReader.start(caret);
+  $('#ttsPause').onclick=()=>edReader.pause();
+  $('#ttsStop').onclick=()=>edReader.stop();
+  const restart=()=>{if(edReader.playing()){const r=edReader.restartHere();edReader.stop(true);edReader.start(r)}};
+  $('#ttsRate').onchange=e=>{S.tts.rate=+e.target.value;saveTts();syncTtsUi();restart()};
+  $$('.ttsLangSel').forEach(s=>s.onchange=e=>{S.tts.lang=e.target.value;saveTts();syncTtsUi();restart();if(readReader&&readReader.playing()){const r=readReader.restartHere();readReader.stop(true);readReader.start(r)}});
+  $('#ttsVoice').onchange=e=>{S.tts.voice[S.tts.lang]=e.target.value;saveTts();restart()};
+  editor.addEventListener('pointerup',()=>{if(!edReader.playing())return;setTimeout(()=>{const s=getSelection();if(s.rangeCount&&s.isCollapsed&&editor.contains(s.anchorNode)){caret=s.getRangeAt(0).cloneRange();edReader.stop(true);edReader.start(caret)}},20)});
+  editor.addEventListener('input',()=>{if(edReader.playing())edReader.stop()});
+  window.addEventListener('beforeunload',()=>speechSynthesis.cancel());
+  syncTtsUi();
 })();
 
 /* ───────── controllo parole incerte ───────── */
@@ -1361,32 +1518,59 @@ $('#aiApply').onclick=()=>{
    Pensata per il “Controller lettura” dell'iPad: il resto dell'app viene nascosto,
    così la voce dell'iPad legge solo il testo (e non i pulsanti). */
 const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-let readSize=0;
+let readSize=0,readReader=null,readResume=null;
 function readStyle(){
   const d=S.dsa,[bg,fg]=THEMES[d.theme]||THEMES.cream,fs=d.fontSize+4+readSize;
-  Object.assign($('#readOv').style,{background:bg,color:fg});
+  Object.assign($('#readOv').style,{background:bg,color:fg});$('#readOv').classList.toggle('dark-hl',d.theme==='dark');
   Object.assign($('#readTxt').style,{fontFamily:`'${d.fontFamily}',sans-serif`,fontSize:fs+'px',lineHeight:d.lineHeight,letterSpacing:d.letterSpacing+'em',wordSpacing:d.wordSpacing+'em'});
 }
+function readUi(s){
+  const p=$('#rPlay');
+  if(!s.playing)p.innerHTML=ic('play')+'<span>Leggi</span>';
+  else p.innerHTML=s.paused?ic('play')+'<span>Riprendi</span>':ic('pause')+'<span>Pausa</span>';
+  p.classList.toggle('on',s.playing&&!s.paused);$('#rStop').disabled=!s.playing;
+  const b=$('#rBadge');b.hidden=!s.playing;if(s.playing){b.textContent=s.lang.toUpperCase();b.title=LANGS[s.lang]}
+}
+if('speechSynthesis' in window){
+  readReader=makeReader({root:$('#readTxt'),scroller:$('#readOv'),layer:$('#readLayer'),bottomPad:110,onState:readUi,
+    onStop:p=>{if(p){const r=document.createRange();r.setStart(p[0],p[1]);r.collapse(true);readResume=r}else readResume=null}});
+}else{$('#rPlay').hidden=true;$('#rStop').hidden=true;$('#rRate').hidden=true}
 function openReading(){
   if(!editor.innerText.trim()){toast('L’editor è vuoto: importa o scansiona prima un testo');return}
-  try{speechSynthesis.cancel()}catch(e){}
+  if(edReader)edReader.stop(true);
   const c=editor.cloneNode(true);
   c.querySelectorAll('.ocr-dubbio').forEach(x=>x.replaceWith(...x.childNodes));
   c.querySelectorAll('.sec').forEach(x=>x.remove());
-  $('#readTxt').innerHTML=c.innerHTML;readStyle();
+  $('#readTxt').innerHTML=c.innerHTML;readStyle();readResume=null;syncTtsUi();
   ['.top','.main','#camOv','#aiOv'].forEach(q=>{const e=$(q);e.setAttribute('aria-hidden','true');e.inert=true});
   $('#readOv').hidden=false;$('#readOv').scrollTop=0;document.body.style.overflow='hidden';
-  if(IOS)toast('Controller lettura: doppio tocco sul pulsante, poi tocca la parola da cui iniziare');
+  toast(readReader?'Premi Leggi o tocca una parola per partire da lì':'Usa il Controller lettura dell’iPad');
 }
 function closeReading(){
+  if(readReader)readReader.stop(true);
   $('#readOv').hidden=true;document.body.style.overflow='';
   ['.top','.main','#camOv','#aiOv'].forEach(q=>{const e=$(q);e.removeAttribute('aria-hidden');e.inert=false});
 }
-$('#readBtn').onclick=openReading;$('#readClose').onclick=closeReading;
 $('#readSet').onclick=()=>$('#dsaOv').hidden=false;
+$('#readBtn').onclick=openReading;$('#readClose').onclick=closeReading;
 $('#readPlus').onclick=()=>{readSize=Math.min(16,readSize+2);readStyle()};
 $('#readMinus').onclick=()=>{readSize=Math.max(-6,readSize-2);readStyle()};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#readOv').hidden){if(!$('#dsaOv').hidden){$('#dsaOv').hidden=true;e.stopPropagation();return}closeReading()}},true);
+$('#rPlay').onclick=()=>{if(!readReader)return;if(readReader.playing())readReader.pause();else readReader.start(readResume)};
+$('#rStop').onclick=()=>{if(readReader)readReader.stop()};
+$$('#rRate button').forEach(b=>b.onclick=()=>{S.tts.rate=+b.dataset.r;saveTts();syncTtsUi();if(readReader&&readReader.playing()){const r=readReader.restartHere();readReader.stop(true);readReader.start(r)}});
+// tocco su una parola: la lettura parte (o salta) da lì. Una selezione lunga resta per “Leggi selezione” dell'iPad.
+$('#readTxt').addEventListener('click',e=>{
+  if(!readReader)return;const s=getSelection();if(s&&!s.isCollapsed&&s.toString().trim())return;
+  const r=pointRange(e.clientX,e.clientY);if(!r||!$('#readTxt').contains(r.startContainer))return;
+  readReader.stop(true);readReader.start(r);
+});
+document.addEventListener('keydown',e=>{
+  if($('#readOv').hidden)return;
+  if(e.key==='Escape'){e.stopPropagation();if(!$('#dsaOv').hidden)$('#dsaOv').hidden=true;else if(!$('#vOv').hidden)$('#vOv').hidden=true;else closeReading()}
+  else if(e.key===' '&&e.target===document.body){e.preventDefault();$('#rPlay').click()}
+},true);
+
+readUi({playing:false});
 
 updateChrome();
 if(!window.pdfjsLib){setStatus('⚠️ Serve una connessione internet per caricare il lettore PDF')}
