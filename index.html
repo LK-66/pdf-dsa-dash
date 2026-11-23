@@ -211,6 +211,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .spin{width:30px;height:30px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp 0.8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 @keyframes pulse{50%{opacity:.5}}
+.campick{max-width:230px;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink)}
 .camctl{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap}
 .shoot{width:62px;height:62px;border-radius:50%;border:4px solid var(--green-soft);background:var(--green);color:#fff;cursor:pointer;display:grid;place-items:center}
 .shoot svg.i{width:26px;height:26px}
@@ -393,6 +394,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
         <button class="btn" id="saveAnn"><i data-i="save"></i> Salva</button>
         <button class="btn" id="expWord"><i data-i="filedown"></i> Word</button>
         <button class="btn" id="expEdPdf"><i data-i="filedown"></i> PDF</button>
+        <button class="btn" id="cleanTxt" title="Rende il testo semplice: toglie formati ed evidenziatori e ricuce le righe spezzate, così la lettura è fluida"><i data-i="eraser"></i> Testo pulito</button>
         <button class="btn" id="aiBtn" title="Correggi gli errori dell’OCR con Copilot o Claude"><i data-i="spark"></i> Correggi con IA</button>
         <button class="btn" id="expJson" title="Esporta annotazioni in un file"><i data-i="download"></i> File</button>
         <label class="btn" title="Importa annotazioni da file"><i data-i="fileup"></i> Importa
@@ -435,6 +437,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       </div>
       <div class="camctl" id="camCtlLive">
         <button class="btn icon" id="camSwitch" title="Cambia fotocamera"><i data-i="switch"></i></button>
+        <select id="camPick" class="campick" title="Scegli la fotocamera, per esempio il visualizzatore della lavagna" hidden></select>
         <button class="shoot" id="camShoot" title="Scatta"><i data-i="camera"></i></button>
         <button class="btn icon" id="camLiveBtn" title="Modalità live: riconosce ogni 2 secondi"><i data-i="zap"></i></button>
         <label class="btn sm" title="Usa una foto già salvata"><i data-i="image"></i> Da foto<input type="file" class="photoIn" accept="image/*"></label>
@@ -566,6 +569,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(16).slice(2,8);
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const toHtml=t=>esc(t).replace(/\n/g,'<br>');
+const paraHtml=t=>t.split('\n').filter(x=>x.trim()).map(x=>`<div>${esc(x)}</div>`).join('');
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}};
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2600)}
 function setStatus(m,busy){const s=$('#status');s.lastElementChild.textContent=m;s.classList.toggle('busy',!!busy)}
@@ -898,14 +902,31 @@ function itemsToText(items){
   });
   return text;
 }
-function tidy(text){
-  const lines=text.split('\n').map(l=>l.replace(/\s{2,}/g,' ').trim()).filter(Boolean);
-  let out='';
-  lines.forEach((l,j)=>{out+=l;const nx=lines[j+1];if(nx){out+=(/[.!?:;]$/.test(l)||(/^[A-ZÀÈÌÒÙÁÉÍÓÚ]/.test(nx)&&l.length<40))?'\n':' '}});
-  return out;
+function tidy(text){ // righe spezzate → paragrafi veri (per incolla, PDF, Apple, OCR)
+  text=text.replace(/\r\n?/g,'\n').replace(/[\u00A0\u2007\u202F\t]/g,' ').replace(/[\u200B-\u200D\uFEFF\u00AD]/g,'');
+  const blocks=text.split(/\n[ ]*\n+/),out=[];
+  for(const b of blocks){
+    const lines=b.split('\n').map(l=>l.replace(/ {2,}/g,' ').trim()).filter(Boolean);if(!lines.length)continue;
+    const L=lines.map(l=>l.length).sort((x,y)=>x-y)[Math.floor(lines.length/2)]; // lunghezza tipica di una riga
+    let p=lines[0];
+    for(let k=1;k<lines.length;k++){const a=lines[k-1],nx=lines[k];
+      if(/\p{L}-$/u.test(p)&&/^\p{Ll}/u.test(nx)){p=p.slice(0,-1)+nx;continue}          // pa- / role → parole
+      const end=/[.!?…:;]["»”’)\]]*$/.test(a)&&(lines.length<3||a.length<L*.8);       // fine frase e riga corta = fine paragrafo
+      if(end||!flows(a,nx)){out.push(p);p=nx}else p+=' '+nx;
+    }
+    out.push(p);
+  }
+  return out.join('\n');
 }
 async function pageText(n){const p=S.pages[n-1];const pg=await p.doc.getPage(p.num);const tc=await pg.getTextContent();return tidy(itemsToText(tc.items))}
 function edAppend(html){editor.insertAdjacentHTML('beforeend',html)}
+editor.addEventListener('paste',e=>{ // incolla sempre testo semplice, senza formati, con le righe ricucite
+  const t=(e.clipboardData||window.clipboardData).getData('text/plain');if(!t)return;
+  e.preventDefault();const c=tidy(cleanText(t));if(!c.trim())return;
+  const lines=c.split('\n');
+  if(lines.length===1)document.execCommand('insertText',false,c);
+  else document.execCommand('insertHTML',false,paraHtml(c));
+});
 async function importAll(){
   if(!S.pages.length){toast('Carica prima un PDF');return}
   setStatus('Importazione testo…',true);let html='',corrupt=false,empty=[];
@@ -913,7 +934,7 @@ async function importAll(){
     const t=await pageText(i);
     if(!t.trim()){empty.push(i);continue}
     if(t.length>20){const bad=(t.match(/[^\w\sàèìòùáéíóúâêîôûäëïöüçñ.,;:!?'"()\-–—’«»]/gi)||[]).length;if(bad/t.length>.15)corrupt=true}
-    html+=`<div class="sec">— Pagina ${i} —</div><div>${toHtml(t)}</div>`;
+    html+=`<div class="sec">— Pagina ${i} —</div>${paraHtml(t)}`;
   }
   editor.innerHTML=html;
   if(corrupt)setStatus('⚠️ Testo illeggibile in alcune pagine · usa “OCR area”');
@@ -923,13 +944,13 @@ async function importAll(){
 async function copyPageToEditor(n){
   const t=await pageText(n);
   if(!t.trim()){setStatus(`Pagina ${n} senza testo · usa OCR`);toast('Questa pagina è un’immagine: usa OCR');return}
-  edAppend(`<div class="sec">— Pagina ${n} —</div><div>${toHtml(t)}</div><br>`);setStatus(`Pagina ${n} copiata nell’editor`);
+  edAppend(`<div class="sec">— Pagina ${n} —</div>${paraHtml(t)}<br>`);setStatus(`Pagina ${n} copiata nell’editor`);
 }
 function copySelection(){
   let t=lastSel&&!lastSel.isEditor?lastSel.text.trim():'';
   if(!t){const s=getSelection();t=s?s.toString().trim():''}
   if(!t){setStatus('Seleziona del testo nel PDF');toast('Seleziona del testo nel PDF');return}
-  edAppend(`<div>${toHtml(t)}</div>`);setStatus('Copiato nell’editor');
+  edAppend(paraHtml(tidy(cleanText(t))));setStatus('Copiato nell’editor');
   lastSel=null;$('#floatCopy').hidden=true;try{getSelection().removeAllRanges()}catch(e){}
 }
 $('#importAll').onclick=importAll;$('#copySel').onclick=copySelection;$('#floatCopy').onclick=copySelection;
@@ -1127,6 +1148,8 @@ async function startCam(){
       if(!rear&&FRONT.test(lab)){const o=devs.find(d=>d.deviceId!==curId);if(o){cam.deviceId=o.deviceId;return startCam()}}
     }
     cam.curId=curId;
+    const pk=$('#camPick');
+    if(pk){pk.innerHTML=devs.map((d,i)=>`<option value="${esc(d.deviceId)}">${esc(d.label||'Fotocamera '+(i+1))}</option>`).join('');pk.value=curId||'';pk.hidden=devs.length<2}
   }catch(e){}
   $('#camVideo').srcObject=cam.stream;$('#camVideo').hidden=false;
 }
@@ -1155,6 +1178,7 @@ function setLive(on){
 }
 function setDest(d){cam.dest=d;$$('.dest button').forEach(b=>b.classList.toggle('on',b.dataset.dest===d))}
 $('#scanBtn').onclick=openCam;$('#scanBtn2').onclick=openCam;$('#camClose').onclick=closeCam;
+$('#camPick').onchange=e=>{cam.deviceId=e.target.value;store.set('pdf-dsa-camdev',cam.deviceId);startCam()}; // scelta per nome (es. visualizzatore)
 $('#camSwitch').onclick=()=>{
   const d=cam.devs||[];
   if(d.length>1){const i=d.findIndex(x=>x.deviceId===cam.curId);cam.deviceId=d[(i+1)%d.length].deviceId;store.set('pdf-dsa-camdev',cam.deviceId)} // fotocamera successiva, ricordata
@@ -1168,7 +1192,7 @@ $$('.dest button').forEach(b=>b.onclick=()=>setDest(b.dataset.dest));
 $('#camRetry').onclick=()=>{resetCamUI();startCam()};
 $('#camOk').onclick=async()=>{
   const t=$('#camText').value.trim();
-  const body=(cam.res&&cam.res.text.trim()===t)?cam.res.html:`<div>${toHtml(t)}</div>`;
+  const body=(cam.res&&cam.res.text.trim()===t)?cam.res.html:`${paraHtml(t)}`;
   if(cam.dest==='page'&&cam.img){
     const n=await addImagePage(cam.img,'scansione');
     if(t)edAppend(`<div class="sec">— Pagina scansionata ${n} —</div>${body}<br>`);
@@ -1377,6 +1401,23 @@ function syncTtsUi(){
 }
 
 /* motore di lettura riutilizzabile (editor e modalità Lettura) */
+// due righe sono lo stesso paragrafo se la prima non finisce con un segno di fine frase
+// (eccetto titoli brevi seguiti da maiuscola ed elenchi puntati o numerati)
+function flows(a,b){
+  const A=a.trim(),B=b.trim();if(!A||!B)return false;
+  if(/[.!?…:;]["»”’)\]]*$/.test(A))return false;
+  if(/^([-–—•·*▪►]\s|\d+[.)]\s)/.test(B))return false;
+  if(A.length<40&&/^\p{Lu}/u.test(B)&&!/[,(-]$/.test(A))return false;
+  return true;
+}
+// testo per la voce: «a capo» → spazio, «pa-↵role» → «parole»; pos[] riporta ogni lettera alla posizione nel testo
+function speakable(t){
+  let out='';const pos=[];
+  for(let i=0;i<t.length;i++){const ch=t[i];
+    if(ch==='-'&&t[i+1]==='\n'&&/\p{L}/u.test(t[i-1]||'')&&/\p{Ll}/u.test(t[i+2]||'')){i++;continue}
+    out+=ch==='\n'?' ':ch;pos.push(i)}
+  return{out,pos};
+}
 
 let activeReader=null;
 const st0cps={}; // velocità misurata di ogni voce (caratteri al secondo), per le voci senza eventi di parola
@@ -1389,8 +1430,12 @@ function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), s
       else if(c.nodeType===1){if(c.classList.contains('sec')||c.tagName==='BR'){text+='\n';continue}walk(c);if(BLOCK.test(c.tagName))text+='\n'}
     }})(o.root);
     // lingua per paragrafo
+    // una riga che non finisce con un punto continua nella riga sotto: per la voce è lo stesso paragrafo
+    const groups=[];
+    for(const m of text.matchAll(/[^\n]+/g)){const g=groups[groups.length-1],s=m.index,e=s+m[0].length;
+      if(g&&s===g.e+1&&flows(g.last,m[0])){g.e=e;g.last=m[0];g.t+='\n'+m[0]}else groups.push({s,e,last:m[0],t:m[0]})}
     const paras=[];let prev='it';
-    for(const m of text.matchAll(/[^\n]+/g)){const lang=S.tts.lang!=='auto'?S.tts.lang:detectLang(m[0],prev);prev=lang;paras.push({s:m.index,e:m.index+m[0].length,lang})}
+    for(const g of groups){const lang=S.tts.lang!=='auto'?S.tts.lang:detectLang(g.t,prev);prev=lang;paras.push({s:g.s,e:g.e,lang})}
     return{text,segs,paras};
   }
   function idxOf(map,node,off){
@@ -1428,7 +1473,7 @@ function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), s
       if(a>=map.text.trim().length&&range.collapsed)a=0;
     }
     // frasi (solo . ! ? …), poi unite in blocchi più lunghi della stessa lingua: meno pause tra un pezzo e l'altro
-    const chunks=[],re=/[^.!?…\n]+[.!?…]*["»”’)]*[ \t]*/g,MAXC=260;
+    const chunks=[],re=/[^.!?…]+[.!?…]*["»”’)]*\s*/g,MAXC=260;
     for(const p of map.paras){
       if(p.e<=a||p.s>=b)continue;const s0=Math.max(a,p.s),e0=Math.min(b,p.e),part=map.text.slice(s0,e0);let m;re.lastIndex=0;
       while((m=re.exec(part))){if(!m[0].trim())continue;
@@ -1450,7 +1495,7 @@ function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), s
   // con una velocità che si corregge da sola misurando quanto dura ogni pezzo letto.
   function enqueue(k){
     if(!st||k>=st.chunks.length||k<=st.q)return;st.q=k;const S0=st;
-    const c=st.chunks[k],u=new SpeechSynthesisUtterance(c.t),v=bestVoice(c.lang),vk=v?v.name:c.lang;
+    const c=st.chunks[k],sp=speakable(c.t),u=new SpeechSynthesisUtterance(sp.out),v=bestVoice(c.lang),vk=v?v.name:c.lang;
     if(v){u.voice=v;u.lang=v.lang}else u.lang=PREF_REGION[c.lang];u.rate=S.tts.rate;
     // per la stima: le pause della voce dopo virgole e punti valgono qualche carattere in più
     const pw=i=>{const pre=c.t.slice(0,i);return i+4*(pre.match(/[,;:]/g)||[]).length+8*(pre.match(/[.!?…]/g)||[]).length};
@@ -1472,7 +1517,7 @@ function makeReader(o){ // o:{root, scroller, onState(state), onStop(idx,map), s
       enqueue(k+1);
     };
     u.onboundary=e=>{if(e.name&&e.name!=='word')return;if(!mine())return;gotB=true;st.bOK[vk]=true;clearInterval(st.timer);
-      let w=words[0];for(const x of words){if(x.rel<=e.charIndex+1)w=x;else break}if(w&&w.o!==st.word)showWord(w.o,w.l)};
+      const ci=sp.pos[e.charIndex]??e.charIndex;let w=words[0];for(const x of words){if(x.rel<=ci+1)w=x;else break}if(w&&w.o!==st.word)showWord(w.o,w.l)};
     const end=()=>{
       if(!mine())return;clearInterval(st.timer);
       const dur=(performance.now()-st.t0-st.pausedFor)/1000;
@@ -1521,6 +1566,30 @@ let edReader=null;
   window.addEventListener('beforeunload',()=>speechSynthesis.cancel());
   syncTtsUi();
 })();
+
+/* ───────── «Testo pulito»: via formati ed evidenziatori, righe ricucite ───────── */
+let cleanArm=0;
+$('#cleanTxt').onclick=()=>{
+  if(!editor.innerText.trim()){toast('L’editor è vuoto');return}
+  const marks=editor.querySelectorAll('[class^="hl-"],[class^="ul-"],[class*=" hl-"],[class*=" ul-"]').length;
+  if(marks&&Date.now()-cleanArm>4000){cleanArm=Date.now();toast('Toglie anche evidenziatori e sottolineature: tocca di nuovo «Testo pulito» per confermare');return}
+  cleanArm=0;if(typeof edReader!=='undefined'&&edReader)edReader.stop(true);
+  // ogni blocco (paragrafo, riga, intestazione) diventa una riga di testo semplice
+  const parts=[];let cur='';
+  const flush=()=>{if(cur.trim())parts.push({t:cur});cur=''};
+  (function walk(n){for(const c of n.childNodes){
+    if(c.nodeType===3)cur+=c.nodeValue;
+    else if(c.nodeType===1){
+      if(c.classList.contains('sec')){flush();parts.push({sec:c.textContent.trim()});continue}
+      if(c.tagName==='BR'){cur+='\n';continue}
+      const blk=/^(DIV|P|LI|H[1-6]|UL|OL|TR|BLOCKQUOTE|SECTION|ARTICLE)$/.test(c.tagName);
+      if(blk&&cur&&!cur.endsWith('\n'))cur+='\n';walk(c);if(blk)cur+='\n';
+    }}})(editor);
+  flush();
+  editor.innerHTML=parts.map(p=>p.sec?`<div class="sec">${esc(p.sec)}</div>`:paraHtml(tidy(cleanText(p.t)))).join('');
+  if(typeof updateDub==='function')updateDub();
+  setStatus('Testo pulito: formati tolti e righe ricucite');toast('✓ Testo pulito: la lettura ora è fluida');
+};
 
 /* ───────── controllo parole incerte ───────── */
 let dubIdx=-1;
