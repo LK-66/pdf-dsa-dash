@@ -352,6 +352,9 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
 .qk-box .btn{min-height:48px;font-size:16px}
 .qk-box label.btn input{display:none}
 .sa-note{margin:0 0 8px}
+.xseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}.xseg button{border:0;background:var(--paper);color:var(--ink);padding:9px 14px;font:inherit;font-size:15px;cursor:pointer}.xseg button+button{border-left:1px solid var(--line)}.xseg button.on{background:var(--green);color:#fff;font-weight:700}
+.xback{background:#e6f4ea;border:1px solid #9bd3ad;border-radius:10px;padding:10px 12px;font-weight:600;animation:pulse2 1.2s ease-in-out 2}
+#xApply.ready{animation:pulse2 1.2s ease-in-out 3}
 </style>
 </head>
 <body class="v3">
@@ -381,10 +384,12 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
         <button data-m="quick"><i data-i="camera"></i> Foto con OCR dell'app, diretta nell'editor</button>
         <button data-m="apple" id="mApple"><i data-i="camera"></i> Scatta e riconosci con Apple (comando)</button>
         <button data-m="paste"><i data-i="copy"></i> Incolla testo copiato</button>
+        <button data-m="xai"><i data-i="spark"></i> Estrai con IA (ChatGPT, Claude, Copilot)</button>
         <button data-m="ocr"><i data-i="scan"></i> Foto con OCR dell'app (scelta delle righe)</button>
         <button data-m="setup"><i data-i="settings"></i> Crea o controlla il comando «Testo DSA»</button>
       </div>
     </div>
+    <button class="btn v3big" id="v3Xai" title="Estrai il testo di un PDF o di una foto con ChatGPT, Claude o Copilot"><i data-i="spark"></i><span>Estrai con IA</span></button>
     <button class="btn v3big" id="v3Pdf"><i data-i="file"></i><span>PDF</span></button>
   </div>
 </header>
@@ -396,6 +401,7 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <button class="btn" id="pdfBack"><i data-i="book"></i> ‹ Editor</button>
       <b class="pdfname" id="pdfName">PDF</b>
       <span class="spacer"></span>
+      <button class="btn needpdf xaiBtn" hidden title="Per PDF difficili o scansionati: trascrizione con ChatGPT, Claude o Copilot"><i data-i="spark"></i> Estrai con IA</button>
       <button class="btn primary needpdf" id="pdfImport" hidden><i data-i="filedown"></i> Importa tutto il PDF</button>
     </div>
     <div class="tb" id="toolbar" hidden>
@@ -712,6 +718,31 @@ canvas.drawc{position:absolute;inset:0;z-index:3;pointer-events:none}
       <div class="row" style="justify-content:flex-end">
         <button class="btn" data-close="aiOv">Annulla</button>
         <button class="btn primary" id="aiApply"><i data-i="check"></i> Sostituisci nell’editor</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="xOv" hidden>
+  <div class="modal" role="dialog" aria-label="Estrai il testo con l’IA">
+    <div class="mh"><h3><i data-i="spark"></i> Estrai il testo con l’IA</h3><button class="btn icon" data-close="xOv"><i data-i="x"></i></button></div>
+    <div class="mb">
+      <p class="hint">Per PDF difficili o scansionati e foto: l’IA trascrive il testo meglio dell’OCR. Usa il tuo account, senza costi per l’app.</p>
+      <div class="set"><label>IA da usare</label><div class="seg xseg" id="xPick" role="group" aria-label="IA da usare">
+        <button data-x="chatgpt">ChatGPT</button><button data-x="claude">Claude</button><button data-x="copilot">Copilot (scuola)</button></div>
+        <p class="hint" id="xNote"></p></div>
+      <ol class="steps">
+        <li><b>Premi il pulsante qui sotto:</b> copia le istruzioni e apre <span class="xName">ChatGPT</span>.</li>
+        <li>In <span class="xName">ChatGPT</span> <b>incolla</b> le istruzioni, <b>allega il PDF</b> (o la foto) con <b>+</b> e invia.</li>
+        <li><b>Copia la risposta</b> (pulsante «Copia» sotto la risposta), torna qui e premi <b>«Inserisci nell’editor»</b>.</li>
+      </ol>
+      <div class="row"><button class="btn primary" id="xGo"><i data-i="copy"></i> 1 · Copia istruzioni e apri <span class="xName">ChatGPT</span></button></div>
+      <details><summary class="hint" style="cursor:pointer">Vedi le istruzioni che vengono copiate</summary><div class="prompt" id="xPrompt"></div></details>
+      <div class="xback" id="xBack" hidden>✓ Bentornato: se hai copiato la risposta, premi «Inserisci nell’editor».</div>
+      <textarea class="rtxt" id="xPaste" placeholder="Qui puoi anche incollare la risposta a mano (tieni premuto › Incolla)…"></textarea>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn" data-close="xOv">Chiudi</button>
+        <button class="btn primary" id="xApply"><i data-i="check"></i> 3 · Inserisci nell’editor</button>
       </div>
     </div>
   </div>
@@ -2055,6 +2086,49 @@ $('#cleanTxt').onclick=()=>{
   setStatus('Testo pulito: formati tolti e righe ricucite');toast('✓ Testo pulito: la lettura ora è fluida');
 };
 
+/* ───────── «Estrai con IA»: trascrizione con ChatGPT, Claude o Copilot (account dell'utente) ───────── */
+const XAI={chatgpt:['ChatGPT','https://chatgpt.com/','Funziona anche con l’account gratuito. Sull’iPad, se hai l’app ChatGPT, si apre l’app.'],
+  claude:['Claude','https://claude.ai/new','Funziona anche con l’account gratuito.'],
+  copilot:['Copilot','https://m365.cloud.microsoft/chat','Accedi con l’account della scuola: per i documenti degli allievi è di solito la scelta più adatta (verifica con la scuola).']};
+const XPROMPT='Trascrivi fedelmente tutto il testo del documento allegato (PDF o foto), nell’ordine di lettura.\n'+
+ 'Regole:\n- Non riassumere, non correggere e non aggiungere commenti: solo il testo del documento.\n'+
+ '- Titoli e paragrafi su righe separate, con una riga vuota tra un paragrafo e l’altro.\n'+
+ '- Ricomponi le parole divise con il trattino a fine riga e unisci le righe della stessa frase.\n'+
+ '- Ignora numeri di pagina, intestazioni e piè di pagina ripetuti.\n'+
+ '- Elenchi puntati con «- » all’inizio della riga; tabelle riga per riga, con le celle separate da « · ».\n'+
+ '- Per immagini o schemi senza testo scrivi una riga tra parentesi quadre, es. [Immagine: cartina della Svizzera].\n'+
+ '- Mantieni la lingua originale del testo.\n- Rispondi solo con il testo semplice, senza formattazione markdown (niente **, #, tabelle).';
+let xWho=store.get('tts-dsa-xai','chatgpt'),xAway=false;
+function syncXai(){if(!XAI[xWho])xWho='chatgpt';$$('#xPick button').forEach(b=>b.classList.toggle('on',b.dataset.x===xWho));$$('#xOv .xName').forEach(e=>e.textContent=XAI[xWho][0]);$('#xNote').textContent=XAI[xWho][2]}
+function openXai(){syncXai();$('#xPrompt').textContent=XPROMPT;$('#xBack').hidden=true;$('#xApply').classList.remove('ready');$('#xOv').hidden=false}
+$('#v3Xai').onclick=openXai;$$('.xaiBtn').forEach(b=>b.onclick=openXai);
+$('#xPick').onclick=e=>{const b=e.target.closest('button[data-x]');if(!b)return;xWho=b.dataset.x;store.set('tts-dsa-xai',xWho);syncXai()};
+async function copyText(txt){let ok=false;try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
+  if(!ok){const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();try{ok=document.execCommand('copy')}catch(e){}ta.remove()}return ok}
+$('#xGo').onclick=async()=>{
+  const ok=await copyText(XPROMPT);
+  toast(ok?`Istruzioni copiate: in ${XAI[xWho][0]} incollale, allega il PDF e invia`:'Copia non riuscita: apri «Vedi le istruzioni» e copiale a mano');
+  xAway=true;window.open(XAI[xWho][1],'_blank','noopener');
+};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&xAway&&!$('#xOv').hidden){xAway=false;$('#xBack').hidden=false;$('#xApply').classList.add('ready')}});
+// risposta dell'IA → testo semplice pulito (via markdown, righe ricucite)
+function aiPlain(t){
+  return t.replace(/\r/g,'').replace(/^```[^\n]*\n?|```$/gm,'').split('\n').map(l=>l
+    .replace(/^\s{0,3}#{1,6}\s+/,'').replace(/^\s*[*•]\s+/,'- ').replace(/\*\*(.+?)\*\*/g,'$1').replace(/__(.+?)__/g,'$1')
+    .replace(/^\s*\|(.+)\|\s*$/,(m,x)=>/^[\s|:-]+$/.test(x)?'':x.split('|').map(c=>c.trim()).join(' · '))).join('\n');
+}
+$('#xApply').onclick=async()=>{
+  let t=$('#xPaste').value.trim();
+  if(!t){try{t=(await navigator.clipboard.readText()).trim()}catch(e){toast('Tieni premuto nel riquadro e scegli «Incolla», poi premi di nuovo «Inserisci»');$('#xPaste').focus();return}}
+  if(!t){toast('Negli appunti non c’è testo: copia la risposta dell’IA');return}
+  if(t===XPROMPT.trim()){toast('Negli appunti ci sono ancora le istruzioni: copia la risposta dell’IA');return}
+  const c=tidy(cleanText(aiPlain(t)));if(!c.trim()){toast('Nessun testo da inserire');return}
+  if(document.body.classList.contains('pdfOpen'))closePdf();
+  edAppend(`<div class="sec">— Testo estratto con ${XAI[xWho][0]} —</div>${paraHtml(c)}<br>`);
+  $('#xOv').hidden=true;$('#xPaste').value='';setTimeout(()=>{editor.scrollTop=editor.scrollHeight},50);
+  setStatus('Testo estratto con '+XAI[xWho][0]+' inserito nell’editor');toast('✓ Testo inserito: puoi ascoltarlo');
+};
+
 /* ───────── controllo parole incerte ───────── */
 let dubIdx=-1;
 function updateDub(){const n=editor.querySelectorAll('.ocr-dubbio').length;$('#checkBar').hidden=!n;$('#checkTxt').textContent=`⚠ ${n} parol${n===1?'a':'e'} incert${n===1?'a':'e'} dell’OCR da controllare`}
@@ -2316,7 +2390,7 @@ const menu=$('#v3Menu');
 $('#v3More').onclick=e=>{e.stopPropagation();menu.hidden=!menu.hidden;$('#v3More').setAttribute('aria-expanded',String(!menu.hidden))};
 document.addEventListener('click',e=>{if(!menu.hidden&&!e.target.closest('.v3menu-wrap')){menu.hidden=true;$('#v3More').setAttribute('aria-expanded','false')}});
 menu.onclick=e=>{const b=e.target.closest('button');if(!b)return;menu.hidden=true;
-  if(b.dataset.m==='paste')$('#pasteGo').click();else if(b.dataset.m==='ocr')openCam();else if(b.dataset.m==='quick')quickShoot();else if(b.dataset.m==='apple')$('#appleShortcut').click();else showSetup('')};
+  if(b.dataset.m==='paste')$('#pasteGo').click();else if(b.dataset.m==='ocr')openCam();else if(b.dataset.m==='quick')quickShoot();else if(b.dataset.m==='apple')$('#appleShortcut').click();else if(b.dataset.m==='xai')openXai();else showSetup('')};
 $('#pasteGo').onclick=async()=>{
   try{const t=await navigator.clipboard.readText();if(!t.trim()){toast('Negli appunti non c’è testo');return}appleToEditor(t)}
   catch(e){$('#pasteBar').hidden=true;editor.focus();toast('Tieni premuto nell’editor e scegli «Incolla»')}
