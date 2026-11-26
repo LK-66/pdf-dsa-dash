@@ -1253,24 +1253,42 @@ editor.addEventListener('paste',e=>{ // incolla sempre testo semplice, senza for
   if(lines.length===1)document.execCommand('insertText',false,c);
   else document.execCommand('insertHTML',false,paraHtml(c));
 });
+// Importa tutto il PDF in un passaggio: testo vero dove c'è, OCR automatico sulle pagine che sono immagini
 async function importAll(){
-  if(!S.pages.length){toast('Carica prima un PDF');return}
-  setStatus('Importazione testo…',true);let html='',corrupt=false,empty=[];
-  const pages=[];
-  for(let i=1;i<=S.pages.length;i++){
-    const t=await pageText(i);
-    if(!t.trim()){empty.push(i);continue}
-    if(t.length>20){const bad=(t.match(/[^\w\sàèìòùáéíóúâêîôûäëïöüçñ.,;:!?'"()\-–—’«»]/gi)||[]).length;if(bad/t.length>.15)corrupt=true}
-    pages.push({i,ps:t.split('\n').filter(x=>x.trim())});
+  if(!S.pages.length){window.__autoImport=true;$('#fileIn').click();return false} // scelto il PDF, il testo viene importato subito
+  if(ocrBusy){toast('Attendi: è in corso un OCR');return false}
+  const N=S.pages.length,pages=[];let nOcr=0,weak=0,dub=0,fail=[];
+  setStatus('Importazione testo…',true);
+  for(let i=1;i<=N;i++){
+    let t=await pageText(i);const solid=t.replace(/\s/g,'');
+    const bad=t.length>20?(t.match(/[^\w\sàèìòùáéíóúâêîôûäëïöüçñ.,;:!?'"()\-–—’«»·]/gi)||[]).length/t.length:0;
+    if(solid.length>=40&&bad<=.15){pages.push({i,ps:t.split('\n').filter(x=>x.trim())});continue}
+    // pagina immagine (o testo illeggibile): OCR
+    if(!nOcr)lockOcr(true);nOcr++;
+    try{
+      quickUi('busy',`Pagina ${i} di ${N}: è un’immagine, leggo il testo con l’OCR…`);
+      const c=await renderForOcr(i);$('#quickImg').src=c.toDataURL('image/jpeg',.6);
+      const r=await ocrImage(c,pr=>$('#quickTxt').textContent=`Pagina ${i} di ${N}: leggo il testo con l’OCR… ${Math.round(pr*100)}%`,{full:true});
+      if(r.text&&r.text.trim()){pages.push({i,html:r.html,ocr:true});dub+=r.dubbi||0;if(((window.__ocrLast||{}).q||100)<85)weak++}
+      else if(solid.length)pages.push({i,ps:t.split('\n').filter(x=>x.trim())});
+      else fail.push(i);
+    }catch(err){console.error(err);fail.push(i);if(solid.length)pages.push({i,ps:t.split('\n').filter(x=>x.trim())})}
   }
-  // frase spezzata a fine pagina: la continuazione torna sulla pagina precedente
-  for(let k=1;k<pages.length;k++){const A=pages[k-1].ps,B=pages[k].ps;if(!A.length||!B.length||pages[k].i!==pages[k-1].i+1)continue;
+  if(nOcr){lockOcr(false);quickUi('off')}
+  // frase spezzata a fine pagina (solo tra pagine con testo vero)
+  for(let k=1;k<pages.length;k++){const A=pages[k-1].ps,B=pages[k].ps;if(!A||!B||!A.length||!B.length||pages[k].i!==pages[k-1].i+1)continue;
     const j=joinBroken([A[A.length-1],B[0]]);if(j.length===1){A[A.length-1]=j[0];B.shift()}}
-  for(const pg of pages)if(pg.ps.length)html+=`<div class="sec">— Pagina ${pg.i} —</div>${paraHtml(pg.ps.join('\n'))}`;
-  if(editor.textContent.trim())edAppend(html);else editor.innerHTML=html; // v3: aggiunge, non cancella il testo esistente
-  if(corrupt)setStatus('⚠️ Testo illeggibile in alcune pagine · usa “OCR area”');
-  else if(empty.length)setStatus(`Testo importato · pagine senza testo (${empty.join(', ')}): usa OCR`);
-  else setStatus('Testo importato nell’editor');
+  let html='';
+  for(const pg of pages){if(pg.ocr)html+=`<div class="sec">— Pagina ${pg.i} (OCR) —</div>${pg.html}`;else if(pg.ps.length)html+=`<div class="sec">— Pagina ${pg.i} —</div>${paraHtml(pg.ps.join('\n'))}`}
+  if(!html){setStatus('Nessun testo trovato nel PDF');toast('Non ho trovato testo nel PDF: prova «Estrai con IA»');return false}
+  if(editor.textContent.trim())edAppend(html);else editor.innerHTML=html;
+  if(nOcr)updateDub();
+  let msg='✓ Testo importato: '+(N===1?'la pagina':pages.length===N?'tutte le '+N+' pagine':pages.length+' pagine su '+N);
+  if(nOcr)msg+=` · ${nOcr} lett${nOcr===1?'a':'e'} con l’OCR`+(dub?` (${dub} parol${dub===1?'a':'e'} da controllare in arancione)`:'');
+  if(fail.length)msg+=` · senza testo: pag. ${fail.join(', ')}`;
+  setStatus(msg);
+  if(weak||fail.length)toast(msg+'. Se il testo è sbagliato, usa «Estrai con IA».');else toast(msg);
+  return true;
 }
 async function copyPageToEditor(n){
   const t=await pageText(n);
@@ -2377,7 +2395,7 @@ function openPdf(){document.body.classList.add('pdfOpen');$('#pdfName').textCont
 function closePdf(){pdfView.sl=viewer.scrollLeft;pdfView.st=viewer.scrollTop;document.body.classList.remove('pdfOpen');$('#floatCopy').hidden=true}
 $('#v3Pdf').onclick=()=>{openPdf();if(!S.pages.length)$('#fileIn').click()};
 $('#pdfBack').onclick=closePdf;
-$('#pdfImport').onclick=async()=>{await importAll();closePdf();toast('✓ Testo del PDF aggiunto all’editor')};
+$('#pdfImport').onclick=async()=>{if(await importAll())closePdf()};
 const _cs=$('#floatCopy').onclick;$('#floatCopy').onclick=()=>{_cs();toast('✓ Copiato nell’editor · premi «‹ Editor» per tornare')};
 // Scansiona: su iPad/iPhone avvia direttamente il comando Apple, sul PC apre lo scanner dell'app
 function showSetup(msg){openCam();scStage('apple');const d=$('#scAppleBox .sc-how');if(d)d.open=true;if(msg)toast(msg)}
@@ -2397,7 +2415,7 @@ $('#pasteGo').onclick=async()=>{
 };
 $('#pasteNo').onclick=()=>$('#pasteBar').hidden=true;
 {const _a2e=appleToEditor;appleToEditor=function(raw){const ok=_a2e(raw);if(ok)store.set('pdf-dsa-shortcut-ok',true);return ok}}
-{const _lp=loadPdf;loadPdf=async f=>{pdfView.fitted=true;pdfView.sl=pdfView.st=0;openPdf();await _lp(f);$('#pdfName').textContent=S.fileName||'PDF';fitWidth();pdfView.sl=pdfView.st=0}}
+{const _lp=loadPdf;loadPdf=async f=>{pdfView.fitted=true;pdfView.sl=pdfView.st=0;openPdf();await _lp(f);$('#pdfName').textContent=S.fileName||'PDF';fitWidth();pdfView.sl=pdfView.st=0;if(window.__autoImport){window.__autoImport=false;if(S.pages.length&&await importAll())closePdf()}}}
 /* ───────── vs2 · app dalla schermata Home: fotocamera interna + OCR, testo diretto nell'editor ───────── */
 const STANDALONE=navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
 document.body.classList.toggle('standalone',STANDALONE);
