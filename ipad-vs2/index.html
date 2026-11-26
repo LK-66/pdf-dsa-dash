@@ -1990,7 +1990,7 @@ $('#cleanTxt').onclick=()=>{
   (function walk(n){for(const c of n.childNodes){
     if(c.nodeType===3)cur+=c.nodeValue;
     else if(c.nodeType===1){
-      if(c.classList.contains('sec')){flush();parts.push({sec:c.textContent.trim()});continue}
+      if(c.classList.contains('sec')&&/^—.*—$/.test(c.textContent.trim())){flush();parts.push({sec:c.textContent.trim()});continue} // un dialogo finito per errore tra le intestazioni torna testo
       if(c.tagName==='BR'){cur+='\n';continue}
       const blk=/^(DIV|P|LI|H[1-6]|UL|OL|TR|BLOCKQUOTE|SECTION|ARTICLE)$/.test(c.tagName);
       if(blk&&cur&&!cur.endsWith('\n'))cur+='\n';walk(c);if(blk)cur+='\n';
@@ -2075,7 +2075,7 @@ $('#aiCopy').onclick=async()=>{
 // risposta dell'IA → HTML: ## titoletti, - elenchi, **grassetto**
 function mdToHtml(t){
   return t.split(/\n/).map(l=>{const x=l.trim();if(!x)return'<br>';
-    if(/^—/.test(x))return`<div class="sec">${esc(x)}</div>`;
+    if(/^—.*—$/.test(x))return`<div class="sec">${esc(x)}</div>`; // solo «— Pagina 1 —», non i dialoghi «— Lasciami…»
     let h=esc(x).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|\s)\*(\S[^*]*?)\*(?=\s|$|[.,;:!?])/g,'$1<i>$2</i>');
     if(/^#{1,4}\s/.test(x))return`<div><b>${h.replace(/^#{1,4}\s+/,'')}</b></div>`;
     if(/^[-*•]\s/.test(x))return`<div>• ${h.replace(/^[-*•]\s+/,'')}</div>`;
@@ -2089,7 +2089,7 @@ $('#aiApply').onclick=()=>{
     else edAppend(html);
     aiRange=null;$('#aiOv').hidden=true;setStatus('Testo semplificato aggiunto nell’editor');toast('✓ Testo semplificato aggiunto');return;
   }
-  const html=t.split(/\n/).map(l=>l.trim()?(/^—/.test(l.trim())?`<div class="sec">${esc(l.trim())}</div>`:`<div>${esc(l)}</div>`):'<br>').join('');
+  const html=t.split(/\n/).map(l=>l.trim()?(/^—.*—$/.test(l.trim())?`<div class="sec">${esc(l.trim())}</div>`:`<div>${esc(l)}</div>`):'<br>').join('');
   if(aiRange&&editor.contains(aiRange.commonAncestorContainer)){aiRange.deleteContents();const f=aiRange.createContextualFragment(html);aiRange.insertNode(f);editor.normalize()}
   else editor.innerHTML=html;
   aiRange=null;$('#aiOv').hidden=true;updateDub();setStatus('Testo corretto inserito nell’editor');
